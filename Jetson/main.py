@@ -10,6 +10,8 @@ import modules.kinematics as kinematics
 
 import numpy as np
 import threading
+import sys
+import time
 
 #Teset, for middlertidig keyboard knapp d
 import sys
@@ -17,10 +19,9 @@ import select
 #Teset, for middlertidig keyboard knapp d
 
 
-import time
 import psutil
 
-
+RESTART_EXIT_CODE = 42
 
 
 class RobotState(Enum):
@@ -46,10 +47,32 @@ def abort_listener(ROS, abort_flag, serial, state):
         if msg == "ABORT":
             log("⚠️ ABORT received in background thread")
             abort_flag.set()
-            if (state == DELIVERING):
+            if (state == RobotState.DELIVERING):
                 serial.send_message("ABORT")
             ROS.clear_message()
         time.sleep(0.05)
+
+def restart_program(cap, stop_event, serial, ROS):
+    try:
+        if stop_event:
+            stop_event.set()
+        time.sleep(0.2)
+
+        if cap:
+            try: cap.release()
+            except: pass
+        
+        if serial:
+            try: serial.close()
+            except: pass
+        
+        if ROS:
+            try: ROS.shutdown()
+            except: pass
+        
+    except Exception as e:
+        print(f"[Restart] cleanup error: {e}")
+
 
 
 def main():
@@ -120,6 +143,22 @@ def main():
     try:
 
         while rclpy.ok():
+
+            msg = ROS.get_latest_message()
+            if msg == "RESTART_APP":
+                log("RESTART_APP recived - restarting service")
+                ROS.clear_message()
+
+                try:
+                    abort_flag.set()
+                    serial.send_message("ABORT")
+                    serial.wait_for_ack("ABORTED")
+                except Exception as e:
+                    print(f"[Restart] abort note: {e}")
+                
+                restart_program(cap, stop_event, serial, ROS)
+                sys.exit(RESTART_EXIT_CODE)
+                
 
             if state == RobotState.IDLE:
                 log("Robot is idle. Waiting for commands...")
@@ -247,8 +286,10 @@ def main():
                         time.sleep(1)
 
                 if matches:
-                    target_x, target_y = matches[0][1], matches[0][2]
-                    log(f"Target detected at x={target_x:.2f} cm, y={target_y:.2f} cm")
+                    matches.sort(key=lambda m: m[3], reverse=True)
+                    best_class, target_x, target_y, best_conf = matches[0]
+                    log(f"Selected {best_class} (conf={best_conf:.2f}) at x={target_x:.2f}, y={target_y:.2f}")
+
 
                     result_msg = ""
                     success, result_msg = controller.twist_delivery(
@@ -316,14 +357,18 @@ def main():
                         serial.send_message("PUMP_OFF")
                         log("Manual: PUMP OFF")
 
-                    elif msg == "MOVE_UP":
-                        if controller.current_pos[2] < -305:
-                            controller.go_to_pos(move_pos=(controller.current_pos[0], controller.current_pos[1], controller.current_pos[2] + 5))
+                    elif msg.startswith("Z "):
+                        z = float(msg.split()[1])
 
-                    elif msg == "MOVE_DOWN":
-                        if controller.current_pos[2] > -325:
-                            controller.go_to_pos(move_pos=(controller.current_pos[0], controller.current_pos[1], controller.current_pos[2] - 5))
-                                        
+                        angles = []
+                        kinematics.plan_linear_move(controller.current_pos[0], controller.current_pos[1], controller.current_pos[2],
+                                                    controller.current_pos[0], controller.current_pos[1], -355 + z*50, angles, waypoints=2)
+                        a1, a2, a3 = angles[-1] # Sending only the goal waypoint
+                        msg = f"ANGLES {int(a1)}, {int(a2)}, {int(a3)}"
+                        serial.send_message(msg)
+                        controller.current_pos = (controller.current_pos[0], controller.current_pos[1], -355 + z*50)
+                        print(f"Sent Angles {int(a1)}, {int(a2)}, {int(a3)}")
+
                     elif msg.startswith("WAYPOINT "):
                         coord_str = msg.split()[1]
                         x_str, y_str = coord_str.split(",")
@@ -331,12 +376,14 @@ def main():
                         y = float(y_str)
                         angles = []
 
+                        x_corrected, y_corrected = controller.correct_target(-y * 140, x*140, controller.current_pos[2])
+
                         kinematics.plan_linear_move(controller.current_pos[0], controller.current_pos[1], controller.current_pos[2],
-                                                     -y * 140, x*140, controller.current_pos[2], angles, waypoints=2)
-                        a1, a2, a3 = angles[1] # Sending only the goal waypoint
+                                                     x_corrected, y_corrected, controller.current_pos[2], angles, waypoints=2)
+                        a1, a2, a3 = angles[-1] # Sending only the goal waypoint
                         msg = f"ANGLES {int(a1)}, {int(a2)}, {int(a3)}"
                         serial.send_message(msg)
-                        controller.current_pos = (-y * 140, x*140, controller.current_pos[2])
+                        controller.current_pos = (x_corrected, y_corrected, controller.current_pos[2])
                         print(f"Sent Angles {int(a1)}, {int(a2)}, {int(a3)}")
 
                     elif msg == "EXIT_MANUAL":
