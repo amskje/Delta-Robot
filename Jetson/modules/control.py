@@ -31,18 +31,31 @@ class DeltaRobotController:
     def __init__(self, serial_comm: comms.SerialComm):
         self.serial = serial_comm  # Instance of SerialComm
         self.current_pos = [HOME_X, HOME_Y, HOME_Z] # Track robot position in mm
-        with open('homography_ROBOT_WORLD.json', 'r') as file:
+
+        with open('homography_ROBOT_WORLD_BOTH.json', 'r') as file:
             H_robot = json.load(file)
 
-        self.H_robot_inv = np.linalg.inv(H_robot)
+        #self.H_robot_inv = np.linalg.inv(H_robot)
 
+        self.H_z1 = np.array(H_robot["H_z1"]) # z1 = -345
+        self.H_z2 = np.array(H_robot["H_z2"]) # z2 = -305
+
+        self.H_z1_inv = np.linalg.inv(self.H_z1)
+        self.H_z2_inv = np.linalg.inv(self.H_z2)
         print(H_robot)
 
     
-    def correct_target(self, x_desired, y_desired):
+    def correct_target(self, x_desired, y_desired, z):
         """Transform a target point from real-world into robot coordinates"""
         pt = np.array([[[x_desired, y_desired]]], dtype=np.float32)
-        corrected = cv2.perspectiveTransform(pt, self.H_robot_inv)
+        #corrected = cv2.perspectiveTransform(pt, self.H_robot_inv)
+
+        if (z < -310):
+            corrected = cv2.perspectiveTransform(pt, self.H_z1_inv)
+        else:
+            corrected = cv2.perspectiveTransform(pt, self.H_z2_inv)
+
+
         return corrected[0][0]
 
     def check_abort(self, abort_flag, msg=""):
@@ -114,7 +127,7 @@ class DeltaRobotController:
         down_angles = []
 
         # Map robot coordinates to real world
-        x_corrected, y_corrected = self.correct_target(target_pos[0], target_pos[1])
+        x_corrected, y_corrected = self.correct_target(target_pos[0], target_pos[1], target_pos[2])
         
         kinematics.plan_linear_move(self.current_pos[0], self.current_pos[1], self.current_pos[2],
                                     x_corrected, y_corrected, target_pos[2], pickup_angles, waypoints=config().WAYPOINTS)
@@ -127,7 +140,6 @@ class DeltaRobotController:
         elif (twist_type == 'Notti'):
             kinematics.plan_linear_move(x_corrected, y_corrected, target_pos[2],
                             x_corrected, y_corrected, target_pos[2]-config().DOWN_NOTTI_MM, down_angles, waypoints=config().WAYPOINTS_DOWN)
-
         else:
             kinematics.plan_linear_move(x_corrected, y_corrected, target_pos[2],
                             x_corrected, y_corrected, target_pos[2]-config().DOWN_MM, down_angles, waypoints=config().WAYPOINTS_DOWN)
@@ -155,7 +167,7 @@ class DeltaRobotController:
         print(f"[Control] Planning move to drop-off at {dropoff_pos}...")
 
         # Adjust dropoff pos with H
-        x_dropoff_corrected, y_dropoff_corrected = self.correct_target(dropoff_pos[0], dropoff_pos[1])
+        x_dropoff_corrected, y_dropoff_corrected = self.correct_target(dropoff_pos[0], dropoff_pos[1], target_pos[2])
         
 
         if include_dropoff:
@@ -202,7 +214,7 @@ class DeltaRobotController:
         down_angles = []
         move_angles = []
 
-        x_corrected, y_corrected = self.correct_target(move_pos[0], move_pos[1])
+        x_corrected, y_corrected = self.correct_target(move_pos[0], move_pos[1], move_pos[2])
  
         kinematics.plan_linear_move(self.current_pos[0], self.current_pos[1], self.current_pos[2],
                                     x_corrected, y_corrected, move_pos[2], move_angles, waypoints=config().WAYPOINTS)

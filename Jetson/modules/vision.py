@@ -178,7 +178,7 @@ def detect_target(target_class, config: VisionConfig, state: VisionState):
             continue
         
             # Refine center by ellipse if not a specific class
-        if target_class != "Marsipan" and class_name != "Fransk" and class_name != "Notti":
+        if target_class != "Marsipan" and class_name != "Fransk" and class_name != "Notti" and class_name != "Daim":
             bbox = (x1, y1, x2, y2, conf, class_id)
             refined_center = refine_center_by_ellipse(state.latest_frame, bbox, debug=True)
             x_pixel = refined_center[0]
@@ -348,8 +348,8 @@ def refine_center_by_ellipse(image, bbox, debug=False):
     aspect_ratio = width / height
 
     # Shave ratios
-    shave_ratio_x = 0.15  # 15% of width
-    shave_ratio_y = 0.15  # 15% of height
+    shave_ratio_x = 0.25  # 15% of width
+    shave_ratio_y = 0.25  # 15% of height
 
     # Default trims
     trim_x = int(width * shave_ratio_x)
@@ -371,10 +371,10 @@ def refine_center_by_ellipse(image, bbox, debug=False):
         y1 += trim_y
         y2 -= trim_y
 
-    x1 = max(0, x1)
-    y1 = max(0, y1)
-    x2 = min(image.shape[1], x2)
-    y2 = min(image.shape[0], y2)
+    #x1 = max(0, x1)
+    #y1 = max(0, y1)
+    #x2 = min(image.shape[1], x2)
+    #y2 = min(image.shape[0], y2)
 
     cropped = image[y1:y2, x1:x2].copy()
     hsv = cv2.cvtColor(cropped, cv2.COLOR_BGR2HSV)
@@ -386,7 +386,7 @@ def refine_center_by_ellipse(image, bbox, debug=False):
 
     # Threshold to separate foreground (candies) from background
     # White pixels (~255) become 0, and darker areas become 255 (inverted)
-    _, mask = cv2.threshold(gray_crop, 160, 255, cv2.THRESH_BINARY_INV)
+    _, mask = cv2.threshold(gray_crop, 170, 255, cv2.THRESH_BINARY_INV)
 
     # Optional: remove small noise
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
@@ -426,7 +426,7 @@ def refine_center_by_ellipse(image, bbox, debug=False):
             dist = np.sqrt((refined_x - original_x)**2 + (refined_y - original_y)**2)
 
             # Set a maximum allowed offset (in pixels)
-            max_distance = 20  # tune this value
+            max_distance = 10  # tune this value
 
             if dist <= max_distance:
                 return refined_x, refined_y

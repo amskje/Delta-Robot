@@ -271,8 +271,11 @@ def main():
                             state = RobotState.IDLE
 
                         else:
-                            log(f" Critical delivery failure: {result_msg}")
-                            state = RobotState.ERROR
+                            log(f" Critical delivery failure: {result_msg}. Unexpected message, moving home and returning to idle.")
+                            serial.send_message("ABORT")
+                            serial.wait_for_ack("ABORTED")
+                            controller.retreat_home(abort_flag=abort_flag)
+                            state = RobotState.IDLE
                                     
                 else:
                     log("Failed to detect target after retries. Returning to IDLE.")
