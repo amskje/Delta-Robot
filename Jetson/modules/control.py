@@ -16,7 +16,7 @@ class ControlConfig:
     WAYPOINTS: int = 10 # Minimum 2
     WAYPOINTS_DOWN: int = 10 #Minimum 2
     DOWN_MM: int = 63 #Total mm robot can move down after hitting target pos
-    DOWN_DAIM_MM: int = 75
+    DOWN_DAIM_MM: int = 72
     DOWN_NOTTI_MM: int = 50
     INITIAL_POSITION: kinematics.Position = kinematics.Position(HOME_X, HOME_Y, HOME_Z)  # Initial position after goHome()
 
@@ -50,8 +50,6 @@ class DeltaRobotController:
             print(f"[Control] ABORT detected {msg}. Retreating...")
             return True
         return False
-
-
 
 
     def send_angles_sequence(self, angles_list, angles_down_list, down_included, abort_flag=None):
@@ -122,7 +120,6 @@ class DeltaRobotController:
                                     x_corrected, y_corrected, target_pos[2], pickup_angles, waypoints=config().WAYPOINTS)
 
 
-        #if statement som endrer down_mm baser på twist!!!!!!!!!!!!!!!!!!!!!!!!!!
         #Plan the moving down waypoints
         if (twist_type == 'Daim'):   
             kinematics.plan_linear_move(x_corrected, y_corrected, target_pos[2],
@@ -134,8 +131,6 @@ class DeltaRobotController:
         else:
             kinematics.plan_linear_move(x_corrected, y_corrected, target_pos[2],
                             x_corrected, y_corrected, target_pos[2]-config().DOWN_MM, down_angles, waypoints=config().WAYPOINTS_DOWN)
-
-
 
         
         pickup_result = self.send_angles_sequence(pickup_angles, down_angles, down_included=True, abort_flag=abort_flag)
@@ -153,7 +148,6 @@ class DeltaRobotController:
             # Update robot position
             self.current_pos = [x_corrected, y_corrected, target_pos[2]] 
 
-        
 
     
         # === Phase 2: Plan path to drop-off

@@ -73,7 +73,7 @@ class_names = [
 
 # === FUNCTIONS ===
 
-def start_inference_thread(model, config, state: VisionState):
+def start_inference_thread(model, config, state: VisionState, stop_event=None):
     cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
 
     if not cap.isOpened():
@@ -85,10 +85,11 @@ def start_inference_thread(model, config, state: VisionState):
 
     def inference_loop():
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        while True:
+        while not (stop_event and stop_event.is_set()):
             ret, frame = cap.read()
             if not ret:
                 print("⚠️ Failed to read frame.")
+                time.sleep(0.1)
                 continue
 
             with state.frame_lock:
@@ -128,10 +129,14 @@ def start_inference_thread(model, config, state: VisionState):
                     print(f"[Vision] ⚠️ Skipping invalid class_id: {class_id}")
                     continue
 
+        cap.release()
+
 
     thread = threading.Thread(target=inference_loop, daemon=True)
     thread.start()
     print("[Vision] 🌀 Inference thread started")
+
+    return cap, stop_event
 
 
 def init_yolo(model_path="models/best.pt"):
