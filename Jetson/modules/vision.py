@@ -18,6 +18,10 @@ class VisionConfig:
     MODEL_PATH: str = "modules/weightsV3.pt"
     CONF_THRESHOLD: float = 0.7
     WORKING_RADIUS_CM: float = 14.8
+    EXCLUSION_RADIUS_CM: float = 6.0
+    EXCLUSION_ANGLE_DEG: float = 60.0
+    EXCLUSION_OFFSET: float = 1.14
+    
 
     # Derived parameters will be computed
     PIXEL_TO_CM_X: float = None
@@ -196,10 +200,34 @@ def detect_target(target_class, config: VisionConfig, state: VisionState):
         dy = y_pixel - config.IMG_CENTER_Y
         dist_px = np.sqrt(dx**2 + dy**2)
 
+
+
+        #Creating a circle on the working area range to ingore hits around the slide
+
+        angle_rad = np.deg2rad(config.EXCLUSION_ANGLE_DEG)
+        r_for_center = int(radius_px * config.EXCLUSION_OFFSET)
+
+
+        ex_center_x = config.IMG_CENTER_X + int(r_for_center * np.cos(angle_rad))
+        ex_center_y = config.IMG_CENTER_Y + int(r_for_center * np.sin(angle_rad))
+        ex_radius_px = max(1, int(config.EXCLUSION_RADIUS_CM / config.PIXEL_TO_CM_X))
+
+        ex_dx = x_pixel - ex_center_x
+        ex_dy = y_pixel - ex_center_y
+        ex_dist_px = np.hypot(ex_dx, ex_dy)
+
+
+
         # Compare to radius (in px)
         if dist_px > radius_px:
             print(f"[Vision] Skipping {class_name} — outside working area.")
             continue  # outside of working area
+
+        if ex_dist_px <= ex_radius_px:
+            print(f"[Vision] Skipping {class_name} - inside slide zone")
+            continue
+
+
 
         # Otherwise, compute world coords and add as match
         x_mm, y_mm = pixel_to_world(x_pixel, y_pixel, config.H)
@@ -216,10 +244,12 @@ def detect_target(target_class, config: VisionConfig, state: VisionState):
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                 cv2.circle(frame, (x_pixel, y_pixel), 4, (0, 0, 255), -1)
+                cv2.circle(frame, (ex_center_x, ex_center_y), ex_radius_px, (0, 165, 255), 2)
 
-                cv2.imshow("🎯 Target Hit", frame)
-                cv2.waitKey(1000)
-                cv2.destroyWindow("🎯 Target Hit")
+
+                #cv2.imshow("🎯 Target Hit", frame)
+                #cv2.waitKey(10000)
+                #cv2.destroyWindow("🎯 Target Hit")
 
             hit_shown = True
 
@@ -256,7 +286,7 @@ def show_live_detections(state: VisionState):
             thickness=-1
         )
 
-        cv2.imshow("🍬 All Detections", frame)
+        #cv2.imshow("🍬 All Detections", frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
@@ -280,7 +310,7 @@ def video_without_inference():
             print("Failed to grab frame.")
             break
 
-        cv2.imshow("Live Feed", frame)
+        #cv2.imshow("Live Feed", frame)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
@@ -314,7 +344,7 @@ def video_loop(cap, stop_event):
             continue
 
         draw_overlay(frame)
-        cv2.imshow("🍬 YOLOv8 Live Detection", frame)
+        #cv2.imshow("🍬 YOLOv8 Live Detection", frame)
 
         # Handle 'q' key press in video window
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -419,9 +449,9 @@ def refine_center_by_ellipse(image, bbox, debug=False):
                 cv2.circle(overlay, (int(cx_local), int(cy_local)), 4, (0, 0, 255), -1)  # red centroid
 
                 # Show the final image
-                cv2.imshow("Overlay: Cropped Image + Mask + Ellipse", overlay)
-                cv2.waitKey(0)
-                cv2.destroyAllWindows()
+                #cv2.imshow("Overlay: Cropped Image + Mask + Ellipse", overlay)
+                #cv2.waitKey(0)
+                #cv2.destroyAllWindows()
 
             dist = np.sqrt((refined_x - original_x)**2 + (refined_y - original_y)**2)
 
