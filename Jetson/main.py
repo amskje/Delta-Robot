@@ -276,6 +276,8 @@ def main():
                                     
                 else:
                     log("Failed to detect target after retries. Returning to IDLE.")
+                    #Either emphty of the type twist or could not found it
+                    ROS.send_message("EMPTY")
                     state = RobotState.IDLE
 
             elif state == RobotState.ERROR:
