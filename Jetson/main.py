@@ -207,12 +207,14 @@ def main():
                         ROS.send_message("DELIVERED")
                         state = RobotState.IDLE
                     else:
-                        if result_msg in ["NOT_PICKED_UP", "DROPPED"]:
+                        if result_msg in ["NOT_PICKED_UP", "DROPPED", "LIMIT"]:
                             log(f" Twist delivery failed: {result_msg}. Restarting delivery loop...")
+                            controller.retreat_home(abort_flag=abort_flag)
                             ROS.send_message("LOST")
                             state = RobotState.IDLE  # Retry from the beginning
                         elif result_msg == "ABORTED":
                             log(f" Twist delivery failed: {result_msg}. Restarting delivery loop...")
+                            controller.retreat_home(abort_flag=abort_flag)
                             ROS.send_message("COMPLETE_ABORT")
                             abort_flag.clear()
                             state = RobotState.IDLE
@@ -254,7 +256,7 @@ def main():
 
         stop_event.set()
 
-        time.sleep(0.5)
+        time.sleep(1)
 
         serial.close()
         log("Serial connection closed")

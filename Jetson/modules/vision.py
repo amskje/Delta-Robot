@@ -130,6 +130,7 @@ def start_inference_thread(model, config, state: VisionState, stop_event=None):
                     continue
 
         cap.release()
+        cv2.destroyAllWindows()
 
 
     thread = threading.Thread(target=inference_loop, daemon=True)

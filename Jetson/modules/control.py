@@ -17,7 +17,7 @@ class ControlConfig:
     WAYPOINTS_DOWN: int = 10 #Minimum 2
     DOWN_MM: int = 63 #Total mm robot can move down after hitting target pos
     DOWN_DAIM_MM: int = 72
-    DOWN_NOTTI_MM: int = 50
+    DOWN_NOTTI_MM: int = 55
     INITIAL_POSITION: kinematics.Position = kinematics.Position(HOME_X, HOME_Y, HOME_Z)  # Initial position after goHome()
 
      # New fallback positions
@@ -137,9 +137,9 @@ class DeltaRobotController:
 
 
         if pickup_result != "SUCCESS":
-            if pickup_result in ["NOT_PICKED_UP", "DROPPED", "ABORTED"]:
+            if pickup_result in ["NOT_PICKED_UP", "DROPPED", "ABORTED", "LIMIT"]:
                 print(f"[Control] Twist delivery not completed, message recived {pickup_result}. Moving to fallback position.")
-                self.retreat_home(abort_flag=abort_flag)
+                #self.retreat_home(abort_flag=abort_flag)
                 return False, pickup_result
             else:
                 print(f"[Control] Error during pickup: {pickup_result}")
@@ -174,9 +174,9 @@ class DeltaRobotController:
         pickup_result = self.send_angles_sequence(dropoff_angles, [], down_included=False, abort_flag=abort_flag)
 
         if pickup_result != "SUCCESS":
-            if pickup_result in ["NOT_PICKED_UP", "DROPPED", "ABORTED"]:
+            if pickup_result in ["NOT_PICKED_UP", "DROPPED", "ABORTED", "LIMIT"]:
                 print(f"[Control] Twist delivery not completed, message recived {pickup_result}. Moving to fallback position.")
-                self.retreat_home(abort_flag=None)
+                #self.retreat_home(abort_flag=None)
                 return False, pickup_result
 
             else:
