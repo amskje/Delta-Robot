@@ -2,10 +2,7 @@
 
 export LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libGLdispatch.so.0
 
-<<<<<<< HEAD
-source /opt/ros/foxy/setup.bash
-/usr/bin/python3 /home/delta/Documents/code/Delta-Robot/Jetson/main.py
-=======
+
 #Set Jetson as working directory
 cd home/delta/Documents/code/Delta-Robot/Jetson
 export PYTHONPATH=$PYTHONPATH:/home/delta/Documents/code/Delta-Robot/Jetson
@@ -21,4 +18,4 @@ done
 
 source /opt/ros/foxy/setup.bash
 /usr/bin/python3 /home/delta/Documents/code/Delta-Robot/Jetson/main.py
->>>>>>> Jetson
+
