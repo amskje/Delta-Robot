@@ -207,13 +207,10 @@ def main():
                 else:
                     if result_msg in ["NOT_PICKED_UP", "DROPPED"]:
                         log(f" Twist delivery failed: {result_msg}. Restarting delivery loop...")
-                        #controller.retreat_home(abort_flag=None) 
                         ROS.send_message("LOST")
                         state = RobotState.IDLE  # Retry from the beginning
                     elif result_msg == "ABORTED":
                         log(f" Twist delivery failed: {result_msg}. Restarting delivery loop...")
-                        
-                        #controller.retreat_home(abort_flag=None)  
                         ROS.send_message("COMPLETE_ABORT")
                         abort_flag.clear()
                         state = RobotState.IDLE

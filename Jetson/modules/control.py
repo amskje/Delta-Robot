@@ -87,7 +87,6 @@ class DeltaRobotController:
                         print("Arduino did abort, ready to move")
                     else:
                         print("arduino did not abort and is not ready to move")
-                    #self.retreat_home(abort_flag=abort_flag)
                     return "ABORTED"
                 a1, a2, a3 = angles_down
                 msg = f"ANGLES {int(a1)}, {int(a2)}, {int(a3)}"
@@ -145,7 +144,7 @@ class DeltaRobotController:
         if pickup_result != "SUCCESS":
             if pickup_result in ["NOT_PICKED_UP", "DROPPED", "ABORTED"]:
                 print(f"[Control] Twist delivery not completed, message recived {pickup_result}. Moving to fallback position.")
-                #self.retreat_home(abort_flag=abort_flag)
+                self.retreat_home(abort_flag=abort_flag)
                 return False, pickup_result
             else:
                 print(f"[Control] Error during pickup: {pickup_result}")
@@ -183,7 +182,7 @@ class DeltaRobotController:
         if pickup_result != "SUCCESS":
             if pickup_result in ["NOT_PICKED_UP", "DROPPED", "ABORTED"]:
                 print(f"[Control] Twist delivery not completed, message recived {pickup_result}. Moving to fallback position.")
-                #self.retreat_home(abort_flag=abort_flag)
+                self.retreat_home(abort_flag=None)
                 return False, pickup_result
 
             else:
@@ -224,6 +223,7 @@ class DeltaRobotController:
     
         
     def retreat_home(self, abort_flag=None):
+        self.current_pos = [HOME_X, HOME_Y, HOME_Z]
 
         fallback1 = config().FALLBACK_STAGE1
         fallback2 = config().FALLBACK_STAGE2
