@@ -5,8 +5,8 @@ from dataclasses import dataclass
 @dataclass
 class KinematicsConfig:
     # Base geometry [mm]
-    r_base: float = 2*70.0
-    r_end: float = 2*25.0
+    r_base: float = 2*math.sqrt(3)*70.0
+    r_end: float = 2*math.sqrt(3)*25.0
     l_biceps: float = 147.37
     l_forearm: float = 250.0
 
