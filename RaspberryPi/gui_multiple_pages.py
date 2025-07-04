@@ -5,155 +5,157 @@ from tkinter import messagebox
 
 class App(tk.Tk):
 
-def __init__(self):
-super().__init__()
-self.title("Delta Robot GUI")
-self.attributes('-fullscreen', True)
-self.bind("<Escape>", lambda event: self.quit())
+    def __init__(self):
+        super().__init__()
+        self.title("Delta Robot GUI")
+        self.attributes('-fullscreen', True)
+        self.bind("<Escape>", lambda event: self.quit())
 
-self.container = tk.Frame(self)
-self.container.pack(fill="both", expand=True)
+        self.container = tk.Frame(self)
+        self.container.pack(fill="both", expand=True)
 
-self.frames = {}
+        self.frames = {}
 
-for F in (StartScreen, ManualScreen, AutomaticScreen):
-frame = F(parent=self.container, controller=self)
-self.frames[F] = frame
-frame.grid(row=0, column=0, sticky="nsew")
+        for F in (StartScreen, ManualScreen, AutomaticScreen):
+            frame = F(parent=self.container, controller=self)
+            self.frames[F] = frame
+            frame.grid(row=0, column=0, sticky="nsew")
 
-self.show_frame(StartScreen)
+        self.show_frame(StartScreen)
 
-def show_frame(self, screen_class):
-frame = self.frames[screen_class]
-frame.tkraise()
+    def show_frame(self, screen_class):
+        frame = self.frames[screen_class]
+        frame.tkraise()
 
+
+#---Start screen---
 class StartScreen(tk.Frame):
 
-def __init__(self, parent, controller):
-super().__init__(parent)
-self.controller = controller
+    def __init__(self, parent, controller):
+        super().__init__(parent)
+        self.controller = controller
 
-self.configure_grid()
+        self.configure_grid()
 
-# Logo
-logo_img = Image.open("twist_bilder/image.png")
-logo_img = logo_img.resize((300, 150))
-self.logo_photo = ImageTk.PhotoImage(logo_img)
-logo_label = tk.Label(self, image=self.logo_photo)
-logo_label.grid(row=0, column=0, columnspan=2, pady=30)
+        # Logo
+        logo_img = Image.open("twist_bilder/image.png")
+        logo_img = logo_img.resize((300, 150))
+        self.logo_photo = ImageTk.PhotoImage(logo_img)
+        logo_label = tk.Label(self, image=self.logo_photo)
+        logo_label.grid(row=0, column=0, columnspan=2, pady=30)
 
-# Mode selection
-tk.Label(self, text="Velg modus:", font=("Arial", 20)).grid(row=1, column=0, columnspan=2, pady=10)
+        # Mode selection
+        tk.Label(self, text="Velg modus:", font=("Arial", 20)).grid(row=1, column=0, columnspan=2, pady=10)
 
-tk.Button(self, text="Manuell Modus", font=("Arial", 16),
-width=20, height=2,
-command=lambda: controller.show_frame(ManualScreen)).grid(row=2, column=0, pady=10, padx=10)
+        tk.Button(self, text="Manuell Modus", font=("Arial", 16),
+        width=20, height=2,
+        command=lambda: controller.show_frame(ManualScreen)).grid(row=2, column=0, pady=10, padx=10)
 
-tk.Button(self, text="Automatisk Modus", font=("Arial", 16),
+        tk.Button(self, text="Automatisk Modus", font=("Arial", 16),
 
-width=20, height=2,
+        width=20, height=2,
 
-command=lambda: controller.show_frame(AutomaticScreen)).grid(row=2, column=1, pady=10, padx=10)
+        command=lambda: controller.show_frame(AutomaticScreen)).grid(row=2, column=1, pady=10, padx=10)
 
-def configure_grid(self):
-self.grid_columnconfigure((0, 1), weight=1)
-self.grid_rowconfigure(0, weight=1)
+    def configure_grid(self):
+        self.grid_columnconfigure((0, 1), weight=1)
+        self.grid_rowconfigure(0, weight=1)
 
 class ManualScreen(tk.Frame):
 
-def __init__(self, parent, controller):
-super().__init__(parent)
-self.controller = controller
+    def __init__(self, parent, controller):
+        super().__init__(parent)
+        self.controller = controller
 
-center = tk.Frame(self)
-center.place(relx=0.5, rely=0.5, anchor="center")
+        center = tk.Frame(self)
+        center.place(relx=0.5, rely=0.5, anchor="center")
 
-tk.Label(center, text="Manuell kontroll", font=("Arial", 20)).grid(row=0, column=1, pady=20)
+        tk.Label(center, text="Manuell kontroll", font=("Arial", 20)).grid(row=0, column=1, pady=20)
 
-# D-pad
-btn_up = tk.Button(center, text="↑", font=("Arial", 24), width=5, command=self.move_up, bg="red", fg="white")
-btn_up.grid(row=1, column=1, pady=5)
+        # D-pad
+        btn_up = tk.Button(center, text="↑", font=("Arial", 24), width=5, command=self.move_up, bg="red", fg="white")
+        btn_up.grid(row=1, column=1, pady=5)
 
-btn_left = tk.Button(center, text="←", font=("Arial", 24), width=5, command=self.move_left, bg="red", fg="white")
-btn_left.grid(row=2, column=0, padx=5)
+        btn_left = tk.Button(center, text="←", font=("Arial", 24), width=5, command=self.move_left, bg="red", fg="white")
+        btn_left.grid(row=2, column=0, padx=5)
 
-btn_down = tk.Button(center, text="↓", font=("Arial", 24), width=5, command=self.move_down, bg="red", fg="white")
-btn_down.grid(row=2, column=1, pady=5)
-btn_right = tk.Button(center, text="→", font=("Arial", 24), width=5, command=self.move_right, bg="red", fg="white")
-btn_right.grid(row=2, column=2, padx=5)
+        btn_down = tk.Button(center, text="↓", font=("Arial", 24), width=5, command=self.move_down, bg="red", fg="white")
+        btn_down.grid(row=2, column=1, pady=5)
+        btn_right = tk.Button(center, text="→", font=("Arial", 24), width=5, command=self.move_right, bg="red", fg="white")
+        btn_right.grid(row=2, column=2, padx=5)
 
-# Back button
-tk.Button(center, text="Tilbake", font=("Arial", 14),
-command=lambda: controller.show_frame(StartScreen)).grid(row=3, column=1, pady=20)
+        # Back button
+        tk.Button(center, text="Tilbake", font=("Arial", 14),
+        command=lambda: controller.show_frame(StartScreen)).grid(row=3, column=1, pady=20)
 
-def move_up(self):
-print("Robot moves UP")
+    def move_up(self):
+        print("Robot moves UP")
 
-def move_down(self):
-print("Robot moves DOWN")
+    def move_down(self):
+        print("Robot moves DOWN")
 
-def move_left(self):
-print("Robot moves LEFT")
+    def move_left(self):
+        print("Robot moves LEFT")
 
-def move_right(self):
-print("Robot moves RIGHT")
+    def move_right(self):
+        print("Robot moves RIGHT")
 
 class AutomaticScreen(tk.Frame):
 
-def __init__(self, parent, controller):
-super().__init__(parent)
-self.controller = controller
+    def __init__(self, parent, controller):
+        super().__init__(parent)
+        self.controller = controller
 
-tk.Label(self, text="Velg din Twist:", font=("Arial", 18)).pack(pady=20)
+        tk.Label(self, text="Velg din Twist:", font=("Arial", 18)).pack(pady=20)
 
-button_frame = tk.Frame(self)
-button_frame.pack()
+        button_frame = tk.Frame(self)
+        button_frame.pack()
 
-class Twist(Enum):
-COCOS = 1
-DAIM = 2
-CARAMEL = 3
-CRISP = 4
-FRANSK = 5
-GOLDEN = 6
-JAPP = 7
-NOTTI = 8
+        class Twist(Enum):
+            COCOS = 1
+            DAIM = 2
+            CARAMEL = 3
+            CRISP = 4
+            FRANSK = 5
+            GOLDEN = 6
+            JAPP = 7
+            NOTTI = 8
 
-self.Twist = Twist
+        self.Twist = Twist
 
-self.images = []
+        self.images = []
 
-image_files = [
-"twist_bilder/cocos.png",
-"twist_bilder/daim.png",
-"twist_bilder/caramel.png",
-"twist_bilder/crisp.png",
-"twist_bilder/fransk.png",
-"twist_bilder/golden.png",
-"twist_bilder/japp.png",
-"twist_bilder/notti.png"
-]
+        image_files = [
+            "twist_bilder/cocos.png",
+            "twist_bilder/daim.png",
+            "twist_bilder/caramel.png",
+            "twist_bilder/crisp.png",
+            "twist_bilder/fransk.png",
+            "twist_bilder/golden.png",
+            "twist_bilder/japp.png",
+            "twist_bilder/notti.png"
+            ]
 
-for i, img_file in enumerate(image_files):
-img = Image.open(img_file).resize((100, 100))
-photo = ImageTk.PhotoImage(img)
-self.images.append(photo)
+        for i, img_file in enumerate(image_files):
+            img = Image.open(img_file).resize((100, 100))
+            photo = ImageTk.PhotoImage(img)
+            self.images.append(photo)
 
-btn = tk.Button(button_frame, image=photo,
-command=lambda x=i+1: self.on_button_click(Twist(x)))
+            btn = tk.Button(button_frame, image=photo,
+            command=lambda x=i+1: self.on_button_click(Twist(x)))
 
-btn.grid(row=i // 4, column=i % 4, padx=10, pady=10)
+            btn.grid(row=i // 4, column=i % 4, padx=10, pady=10)
 
-tk.Button(self, text="Tilbake", font=("Arial", 14),
-command=lambda: controller.show_frame(StartScreen)).pack(pady=20)
+        tk.Button(self, text="Tilbake", font=("Arial", 14),
+            command=lambda: controller.show_frame(StartScreen)).pack(pady=20)
 
 
-def on_button_click(self, twist):
-messagebox.showinfo("Selection", f"Du valgte {twist.name}")
-print("Twisten valgt er nummer", twist.value)
+    def on_button_click(self, twist):
+        messagebox.showinfo("Selection", f"Du valgte {twist.name}")
+        print("Twisten valgt er nummer", twist.value)
 
 if __name__ == "__main__":
-app = App()
-app.mainloop()
+    app = App()
+    app.mainloop()
 
 
