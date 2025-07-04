@@ -114,6 +114,18 @@ void loop() {
 
   // Run motion
   if (isExecuting) {
+    if (digitalRead(LIMIT1) == LOW) {
+      Serial.println("LIMIT1 triggered!");
+      isExecuting = false;                      // MÅ GJØRE NOE HER
+    }
+    if (digitalRead(LIMIT2) == LOW) {
+      Serial.println("LIMIT2 triggered!");
+      isExecuting = false;                      // MÅ GJØRE NOE HER
+    }
+    if (digitalRead(LIMIT3) == LOW) {
+      Serial.println("LIMIT3 triggered!");
+      isExecuting = false;                      // MÅ GJØRE NOE HER
+    }
     motor1.run();
     motor2.run();
     motor3.run();
@@ -128,6 +140,9 @@ void loop() {
         moveToIndex(current_index);
       } else {
         isExecuting = false;
+        current_index = 0;
+        waypoint_count = 0;
+        pathReady = false;
         Serial.println("DONE");  // ACK to Jetson
       }
     }
