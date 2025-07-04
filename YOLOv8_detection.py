@@ -1,22 +1,25 @@
 import cv2
 from ultralytics import YOLO
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
 
 # ==== CONFIGURATION ====
-FRAME_WIDTH = 640         # width of video feed in pixels
-FRAME_HEIGHT = 640        # height of video feed in pixels
-SURFACE_WIDTH_CM = 29.6   # physical surface width in cm
-SURFACE_HEIGHT_CM = 29.6  # physical surface height in cm
-CONF_THRESHOLD = 0.5      # minimum confidence for detection
-MODEL_PATH = "path/to/your/custom_model.pt"
+FRAME_WIDTH = 640
+FRAME_HEIGHT = 640
+SURFACE_WIDTH_CM = 29.6
+SURFACE_HEIGHT_CM = 29.6
+CONF_THRESHOLD = 0.5
+MODEL_PATH = "best.pt"
+SEND_FIRST_ONLY = True  # Only send one candy per frame
+SERIAL_TOPIC = 'arduino_command'
 # ========================
 
-# Derived conversion factors
 PIXEL_TO_CM_X = SURFACE_WIDTH_CM / FRAME_WIDTH
 PIXEL_TO_CM_Y = SURFACE_HEIGHT_CM / FRAME_HEIGHT
 IMG_CENTER_X = FRAME_WIDTH // 2
 IMG_CENTER_Y = FRAME_HEIGHT // 2
 
-# Custom class names
 class_names = [
     "Banan", "Cocos", "Crisp", "Daim", "Fransk", "Golden",
     "Japp", "karamell", "Lakris", "Notti", "Toffee", "Eclairs"
@@ -25,7 +28,7 @@ class_names = [
 # Load YOLO model
 model = YOLO(MODEL_PATH)
 
-# GStreamer pipeline with center-crop to square (2464x2464) and downscale to 640x640
+# GStreamer pipeline
 gst_pipeline = (
     "nvarguscamerasrc sensor-mode=0 ! "
     "video/x-raw(memory:NVMM), width=3280, height=2464, format=NV12, framerate=21/1 ! "
@@ -34,50 +37,53 @@ gst_pipeline = (
     "videoconvert ! video/x-raw, format=BGR ! appsink"
 )
 
-# Initialize camera
-cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
-if not cap.isOpened():
-    print("🚫 Failed to open camera.")
-    exit()
+def main():
+    # Start ROS
+    rclpy.init()
+    node = rclpy.create_node('yolo_coordinate_publisher')
+    publisher = node.create_publisher(String, SERIAL_TOPIC, 10)
 
-# Create square display window
-cv2.namedWindow("🍬 YOLOv8 Live Detection", cv2.WINDOW_NORMAL)
-cv2.resizeWindow("🍬 YOLOv8 Live Detection", FRAME_WIDTH, FRAME_HEIGHT)
+    # Open camera
+    cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
+    if not cap.isOpened():
+        print("🚫 Failed to open camera.")
+        rclpy.shutdown()
+        return
 
-print("🎥 Live detection running... Press 'q' to quit.")
+    print("🎯 YOLO detection running and publishing to Arduino...")
 
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        print("⚠️ Failed to read frame.")
-        break
+    try:
+        while rclpy.ok():
+            ret, frame = cap.read()
+            if not ret:
+                print("⚠️ Failed to read frame.")
+                break
 
-    # Run YOLO inference
-    results = model(frame, conf=CONF_THRESHOLD)[0]
-    annotated_frame = results.plot()
+            # YOLO inference
+            results = model(frame, conf=CONF_THRESHOLD)[0]
 
-    # Loop over detections
-    for box in results.boxes:
-        x_pixel = int(box.xywh[0][0].item())
-        y_pixel = int(box.xywh[0][1].item())
+            for i, box in enumerate(results.boxes):
+                x_pixel = int(box.xywh[0][0].item())
+                y_pixel = int(box.xywh[0][1].item())
 
-        # Draw red center dot
-        cv2.circle(annotated_frame, (x_pixel, y_pixel), radius=5, color=(0, 0, 255), thickness=-1)
+                x_cm = (x_pixel - IMG_CENTER_X) * PIXEL_TO_CM_X
+                y_cm = (y_pixel - IMG_CENTER_Y) * PIXEL_TO_CM_Y
 
-        # Convert to real-world centered coordinates
-        x_cm = (x_pixel - IMG_CENTER_X) * PIXEL_TO_CM_X
-        y_cm = (y_pixel - IMG_CENTER_Y) * PIXEL_TO_CM_Y
+                # Send formatted string "x_cm,y_cm" to Arduino
+                msg = String()
+                msg.data = f"{x_cm:.1f},{y_cm:.1f}"
+                publisher.publish(msg)
+                node.get_logger().info(f"Sent: {msg.data}")
 
-        # Overlay coordinate text
-        coord_label = f"({x_cm:.1f}, {y_cm:.1f}) cm"
-        cv2.putText(annotated_frame, coord_label, (x_pixel + 5, y_pixel - 5),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+                if SEND_FIRST_ONLY:
+                    break  # Only send one candy per frame
 
-    # Show frame
-    cv2.imshow("🍬 YOLOv8 Live Detection", annotated_frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        print("🛑 Exiting...")
-        break
+    except KeyboardInterrupt:
+        print("🛑 Detection stopped by user.")
 
-cap.release()
-cv2.destroyAllWindows()
+    cap.release()
+    node.destroy_node()
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
