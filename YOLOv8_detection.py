@@ -7,7 +7,7 @@ FRAME_HEIGHT = 640        # height of video feed in pixels
 SURFACE_WIDTH_CM = 29.6   # physical surface width in cm
 SURFACE_HEIGHT_CM = 29.6  # physical surface height in cm
 CONF_THRESHOLD = 0.5      # minimum confidence for detection
-MODEL_PATH = "path/to/your/custom_model.pt"
+MODEL_PATH = "best.pt"
 # ========================
 
 # Derived conversion factors
