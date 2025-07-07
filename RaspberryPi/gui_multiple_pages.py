@@ -3,6 +3,11 @@ from PIL import Image, ImageTk
 from enum import Enum
 from tkinter import messagebox
 
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
+import threading
+
 class App(tk.Tk):
 
     def __init__(self):
@@ -73,32 +78,25 @@ class ManualScreen(tk.Frame):
         tk.Label(center, text="Manuell kontroll", font=("Arial", 20)).grid(row=0, column=1, pady=20)
 
         # D-pad
-        btn_up = tk.Button(center, text="↑", font=("Arial", 24), width=5, command=self.move_up, bg="red", fg="white")
+        btn_up = tk.Button(center, text="↑", font=("Arial", 24), width=5, command=lambda: self.move("Up"), bg="red", fg="white")
         btn_up.grid(row=1, column=1, pady=5)
 
-        btn_left = tk.Button(center, text="←", font=("Arial", 24), width=5, command=self.move_left, bg="red", fg="white")
+        btn_left = tk.Button(center, text="←", font=("Arial", 24), width=5, command=lambda: self.move("Left"), bg="red", fg="white")
         btn_left.grid(row=2, column=0, padx=5)
 
-        btn_down = tk.Button(center, text="↓", font=("Arial", 24), width=5, command=self.move_down, bg="red", fg="white")
+        btn_down = tk.Button(center, text="↓", font=("Arial", 24), width=5, command=lambda: self.move("down"), bg="red", fg="white")
         btn_down.grid(row=2, column=1, pady=5)
-        btn_right = tk.Button(center, text="→", font=("Arial", 24), width=5, command=self.move_right, bg="red", fg="white")
+        btn_right = tk.Button(center, text="→", font=("Arial", 24), width=5, command=lambda: self.move("right"), bg="red", fg="white")
         btn_right.grid(row=2, column=2, padx=5)
 
         # Back button
         tk.Button(center, text="Tilbake", font=("Arial", 14),
         command=lambda: controller.show_frame(StartScreen)).grid(row=3, column=1, pady=20)
 
-    def move_up(self):
-        print("Robot moves UP")
+    def move(self, direction):
+        print("Robot moves ", direction)
 
-    def move_down(self):
-        print("Robot moves DOWN")
 
-    def move_left(self):
-        print("Robot moves LEFT")
-
-    def move_right(self):
-        print("Robot moves RIGHT")
 
 class AutomaticScreen(tk.Frame):
 
@@ -153,8 +151,30 @@ class AutomaticScreen(tk.Frame):
     def on_button_click(self, twist):
         messagebox.showinfo("Selection", f"Du valgte {twist.name}")
         print("Twisten valgt er nummer", twist.value)
+        twist_publisher.send_twist(twist.name)
+
+
+class TwistPublisher(Node):
+
+    def __init__(self):
+        super().__init__('twist_publisher')
+        self.publisher_ = self.create_publisher(String, 'twist_selection', 10)
+
+    def send_twist(self, twist_name: str):
+        msg = String()
+        msg.data = twist_name
+        self.publisher_.publish(msg)
+        self.get_logger().info(f"Sent twist: {msg.data}")
 
 if __name__ == "__main__":
+
+    #Start ROS 2
+    rclpy.init()
+    twist_publisher =TwistPublisher()
+
+    ros_thread = threading.Thread(target=rclpy.spin, args=(twist_publisher,), daemon=True)
+    ros_thread.start()
+
     app = App()
     app.mainloop()
 
