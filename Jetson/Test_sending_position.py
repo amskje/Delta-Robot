@@ -21,6 +21,8 @@ PIXEL_TO_CM_Y = SURFACE_HEIGHT_CM / FRAME_HEIGHT
 IMG_CENTER_X = FRAME_WIDTH // 2
 IMG_CENTER_Y = FRAME_HEIGHT // 2
 
+
+
 class_names = [
     "Banan", "Cocos", "Crisp", "Daim", "Fransk", "Golden",
     "Japp", "karamell", "Lakris", "Notti", "Toffee", "Eclairs"

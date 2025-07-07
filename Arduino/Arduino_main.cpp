@@ -143,9 +143,9 @@ void readSerialMessage() {
 }
 
 void goHome() {
-  homeMotor(motor1, LIMIT1, MOTOR1_HOME);
-  homeMotor(motor2, LIMIT2, MOTOR2_HOME);
-  homeMotor(motor3, LIMIT3, MOTOR3_HOME);
+  homeMotor(motor1, LIMIT1, 0);
+  homeMotor(motor2, LIMIT2, 0);
+  homeMotor(motor3, LIMIT3, 0);
 }
 
 void setup() {
