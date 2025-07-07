@@ -6,10 +6,6 @@ r_base = 70.0
 r_end = 24.0
 l_biceps = 147.0
 l_forearm = 250.0
-rot_per_rev = 8000.0  # Number of steps per revolution for the motors
-ZERO_ANGLE1 = 408*360/rot_per_rev
-ZERO_ANGLE2 = 391*360/rot_per_rev
-ZERO_ANGLE3 = 422*360/rot_per_rev
 
 MAX_waypoints = 20
 
@@ -48,17 +44,17 @@ def inverse_kinematics(x, y, z):
     If any arm fails, it returns 0.0 for that angle."""
     # Arm 1
     ok1, t1 = single_arm_ik(x, y, z)
-    theta1 = t1 - ZERO_ANGLE1 if ok1 else 0.0
+    theta1 = t1 if ok1 else 0.0
 
     # Arm 2
     xr2, yr2 = rotate_xy(x, y, 2.0 * math.pi / 3.0)
     ok2, t2 = single_arm_ik(xr2, yr2, z)
-    theta2 = t2 - ZERO_ANGLE2 if ok2 else 0.0
+    theta2 = t2 if ok2 else 0.0
 
     # Arm 3
     xr3, yr3 = rotate_xy(x, y, -2.0 * math.pi / 3.0)
     ok3, t3 = single_arm_ik(xr3, yr3, z)
-    theta3 = t3 - ZERO_ANGLE3 if ok3 else 0.0
+    theta3 = t3 if ok3 else 0.0
 
     if not (ok1 and ok2 and ok3):
         print("IK solution failed for one or more arms.")

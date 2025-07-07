@@ -3,6 +3,7 @@ from ultralytics import YOLO
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
+import Delta_pathplanning as dp
 
 # ==== CONFIGURATION ====
 FRAME_WIDTH = 640
@@ -19,6 +20,8 @@ PIXEL_TO_CM_X = SURFACE_WIDTH_CM / FRAME_WIDTH
 PIXEL_TO_CM_Y = SURFACE_HEIGHT_CM / FRAME_HEIGHT
 IMG_CENTER_X = FRAME_WIDTH // 2
 IMG_CENTER_Y = FRAME_HEIGHT // 2
+
+
 
 class_names = [
     "Banan", "Cocos", "Crisp", "Daim", "Fransk", "Golden",
@@ -70,11 +73,7 @@ def main():
                 y_cm = (y_pixel - IMG_CENTER_Y) * PIXEL_TO_CM_Y
 
                 # Send formatted string "x_cm,y_cm" to Arduino
-                msg = String()
-                msg.data = f"{x_cm:.1f},{y_cm:.1f}"
-                publisher.publish(msg)
-                node.get_logger().info(f"Sent: {msg.data}")
-
+                
                 if SEND_FIRST_ONLY:
                     break  # Only send one candy per frame
 
