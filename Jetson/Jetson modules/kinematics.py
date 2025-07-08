@@ -71,7 +71,7 @@ def plan_linear_move(
     x0: float, y0: float, z0: float,
     x1: float, y1: float, z1: float,
     angles_list: List[Tuple[int, int, int]],
-    waypoints: int = 20
+    waypoints: int = MAX_waypoints
     ):
     """
     Generate linear path from (x0, y0, z0) to (x1, y1, z1), compute IK for each step,
