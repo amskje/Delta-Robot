@@ -16,9 +16,6 @@
 
 #define PUMP 12
 
-#define MOTOR1_HOME  1592L
-#define MOTOR2_HOME  1609L
-#define MOTOR3_HOME  1578L
 
 enum State {
   IDLE,
@@ -40,12 +37,12 @@ int current_index = 0;
 String inputBuffer = "";
 bool newMessage = false;
 
-void homeMotor(AccelStepper &motor, int limitPin, long homePosition) {
+void homeMotor(AccelStepper &motor, int limitPin) {
   while (digitalRead(limitPin) == HIGH) {
     motor.move(10);
     motor.run();
   }
-  motor.setCurrentPosition(homePosition);
+  motor.setCurrentPosition(0);
   motor.moveTo(-100);
   while (motor.distanceToGo() != 0) {
     motor.run();
@@ -56,9 +53,9 @@ void checkLimitSwitches() {
   if (digitalRead(LIMIT1) == LOW || digitalRead(LIMIT2) == LOW || digitalRead(LIMIT3) == LOW) {
     stopAllMotors();
     digitalWrite(PUMP, LOW); // Stop the pump if running
-    homeMotor(motor1, LIMIT1, MOTOR1_HOME);
-    homeMotor(motor2, LIMIT2, MOTOR2_HOME);
-    homeMotor(motor3, LIMIT3, MOTOR3_HOME);
+    homeMotor(motor1, LIMIT1);
+    homeMotor(motor2, LIMIT2);
+    homeMotor(motor3, LIMIT3);
     Serial.println("LIMIT");
   }
 }
@@ -144,9 +141,9 @@ void readSerialMessage() {
 }
 
 void goHome() {
-  homeMotor(motor1, LIMIT1, 0);
-  homeMotor(motor2, LIMIT2, 0);
-  homeMotor(motor3, LIMIT3, 0);
+  homeMotor(motor1, LIMIT1);
+  homeMotor(motor2, LIMIT2);
+  homeMotor(motor3, LIMIT3);
 }
 
 void setup() {
