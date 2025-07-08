@@ -113,6 +113,7 @@ void readSerialMessage() {
     if (inputBuffer == "POSITION") {
       waypoint_count = 0;
       abortRequested = false;
+      Serial.println("READY");
     }
     else if (inputBuffer.startsWith("ANGLES") && currentState == IDLE) {
       int a1, a2, a3;
@@ -168,7 +169,7 @@ void setup() {
 
   goHome();
 
-  Serial.println("READY"); // signal Jetson
+  Serial.println("Finished setup"); // signal Jetson
 }
 
 void loop() {
