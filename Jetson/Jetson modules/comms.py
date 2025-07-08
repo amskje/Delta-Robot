@@ -12,7 +12,8 @@ ACK_TIMEOUT = 5  # seconds
 
 class ROSComm:
     def __init__(self, topic=ROS_TOPIC, node_name='Jetson'):
-        rclpy.init()
+        if not rclpy.ok():
+            rclpy.init()
         self.node = rclpy.create_node(node_name)
         self.publisher = self.node.create_publisher(String, topic, 10)
         self.subscriber = self.node.create_subscription(
