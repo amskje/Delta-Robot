@@ -1,5 +1,4 @@
 import rclpy
-from rclpy.node import Node
 from std_msgs.msg import String
 import serial
 import time
@@ -16,7 +15,18 @@ class ROSComm:
         rclpy.init()
         self.node = rclpy.create_node(node_name)
         self.publisher = self.node.create_publisher(String, topic, 10)
+        self.subscriber = self.node.create_subscription(
+            String,
+            topic,
+            self._receive_callback,
+            10
+        )
+        self._latest_msg = None
         self.node.get_logger().info(f"ROS initialized on topic '{topic}'")
+
+    def _receive_callback(self, msg: String):
+        self.node.get_logger().info(f"Received: {msg.data}")
+        self._latest_msg = msg.data
 
     def send_message(self, message: str):
         msg = String()
@@ -24,10 +34,18 @@ class ROSComm:
         self.publisher.publish(msg)
         self.node.get_logger().info(f"Published: {msg.data}")
 
+    def get_latest_message(self) -> str:
+        return str(self._latest_msg)
+
+    def clear_message(self):
+        self._latest_msg = None
+
+    def spin_once(self, timeout_sec=0.1):
+        rclpy.spin_once(self.node, timeout_sec=timeout_sec)
+
     def shutdown(self):
         self.node.destroy_node()
         rclpy.shutdown()
-
 
 
 class SerialComm:
