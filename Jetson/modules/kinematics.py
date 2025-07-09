@@ -7,12 +7,13 @@ r_base = 70.0
 r_end = 24.0
 l_biceps = 147.0
 l_forearm = 250.0
+pulses_per_rev = 800
 
-ZERO_ANGLE1 = 408*360 / 8000
-ZERO_ANGLE2 = 391*360 / 8000
-ZERO_ANGLE3 = 422*360 / 8000
+ZERO_ANGLE1 = 408*360 / pulses_per_rev
+ZERO_ANGLE2 = 391*360 / pulses_per_rev
+ZERO_ANGLE3 = 422*360 / pulses_per_rev
 
-MAX_waypoints = 20
+MAX_waypoints = 3
 
 path_points = []
 path_angles = []
@@ -96,7 +97,7 @@ def plan_linear_move(
 
         theta1, theta2, theta3 = inverse_kinematics(x, y, z)
         angles_list.append((
-            round(theta1 * 8000 / 360),
-            round(theta2 * 8000 / 360),
-            round(theta3 * 8000 / 360)
+            round(theta1 * pulses_per_rev / 360),
+            round(theta2 * pulses_per_rev / 360),
+            round(theta3 * pulses_per_rev / 360)
         ))
