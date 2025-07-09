@@ -1,16 +1,23 @@
+import sys
+import os
+
+# Add the 'modules' folder to Python's import path
+sys.path.append(os.path.join(os.path.dirname(__file__), "modules"))
+
 import cv2
+import serial
 from ultralytics import YOLO
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
-import Delta_pathplanning as dp
+import kinematics
 
 # ==== CONFIGURATION ====
 FRAME_WIDTH = 640
 FRAME_HEIGHT = 640
 SURFACE_WIDTH_CM = 29.6
 SURFACE_HEIGHT_CM = 29.6
-CONF_THRESHOLD = 0.5
+CONF_THRESHOLD = 0.9
 MODEL_PATH = "best.pt"
 SEND_FIRST_ONLY = True  # Only send one candy per frame
 SERIAL_TOPIC = 'arduino_command'
@@ -63,23 +70,36 @@ def main():
 
     # Open camera
     cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
+    cv2.namedWindow("YOLO Trigger Window", cv2.WINDOW_NORMAL)
+    cv2.resizeWindow("YOLO Trigger Window", 200, 100)
+
     if not cap.isOpened():
         print("Failed to open camera.")
         rclpy.shutdown()
         return
-
+    
     print("Press 'b' to capture and send one detection. Press 'q' to quit.")
 
     try:
         while rclpy.ok():
             key = cv2.waitKey(1) & 0xFF
             if key == ord('b'):
-                ret, frame = cap.read()
-                if not ret:
-                    print("Failed to read frame.")
+                # Capture 10 frames to warm up the camera and stabilize detection
+                latest_frame = None
+                for _ in range(10):
+                    ret, frame = cap.read()
+                    if not ret:
+                        print("Failed to read frame.")
+                        break
+                    latest_frame = frame
+
+                if latest_frame is None:
+                    print("No valid frame captured.")
                     continue
 
-                results = model(frame, conf=CONF_THRESHOLD)[0]
+                # Run YOLO on the latest frame
+                results = model(latest_frame, conf=CONF_THRESHOLD)[0]
+
 
                 if not results.boxes:
                     print("No object detected.")
@@ -93,7 +113,7 @@ def main():
                 x_cm = (x_pixel - IMG_CENTER_X) * PIXEL_TO_CM_X
                 y_cm = (y_pixel - IMG_CENTER_Y) * PIXEL_TO_CM_Y
 
-                dp.plan_linear_move(current_position.x, current_position.y, current_position.z, x_cm, y_cm, 250, angles)
+                kinematics.plan_linear_move(current_position.x, current_position.y, current_position.z, x_cm, y_cm, 250, angles)
 
                 msg = String()
                 msg.data = f"\nPOSITION"
