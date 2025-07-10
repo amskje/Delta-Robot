@@ -7,6 +7,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "modules"))
 import serial
 import time
 import kinematics
+from kinematics import Position
 
 # ==== CONFIGURATION ====
 SERIAL_PORT = '/dev/ttyACM0'
