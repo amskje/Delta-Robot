@@ -13,12 +13,18 @@ ZERO_ANGLE1 = 408*360 / pulses_per_rev
 ZERO_ANGLE2 = 391*360 / pulses_per_rev
 ZERO_ANGLE3 = 422*360 / pulses_per_rev
 
-MAX_waypoints = 3
+MAX_waypoints = 10
 
 path_points = []
 path_angles = []
 path_index = 0
 path_running = False
+
+class Position:
+    def __init__(self, x=0.0, y=0.0, z=0.0):
+        self.x = x
+        self.y = y
+        self.z = z
 
 def single_arm_ik(x0, y0, z0):
     """Computes the angle for one arm given x, y, z.
