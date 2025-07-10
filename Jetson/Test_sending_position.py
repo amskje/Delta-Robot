@@ -20,6 +20,7 @@ MODEL_PATH = "best.pt"
 SEND_FIRST_ONLY = True
 SERIAL_PORT = '/dev/ttyACM0'
 SERIAL_BAUD = 57600
+Z_HEIGHT_CM = 25.0
 # ========================
 
 PIXEL_TO_CM_X = SURFACE_WIDTH_CM / FRAME_WIDTH
@@ -116,7 +117,7 @@ def main():
                 y_cm = (y_pixel - IMG_CENTER_Y) * PIXEL_TO_CM_Y
 
                 angles.clear()
-                kinematics.plan_linear_move(current_position.x, current_position.y, current_position.z, x_cm, y_cm, 200, angles)
+                kinematics.plan_linear_move(current_position.x, current_position.y, current_position.z, x_cm, y_cm, Z_HEIGHT_CM, angles)
 
                 ser.write(b"POSITION\n")
                 ser.flush()
