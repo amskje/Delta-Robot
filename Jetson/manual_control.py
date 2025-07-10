@@ -25,7 +25,7 @@ current_position = kinematics.Position(3.373, 0.184, 257.886)
 
 def wait_for_arduino_ready(ser):
     print("Waiting for Arduino to finish setup...")
-    deadline = time.time() + 10  # timeout after 10 seconds
+    deadline = time.time() + 12  # timeout after xx seconds
     while time.time() < deadline:
         try:
             line = ser.readline().decode().strip()
@@ -75,7 +75,7 @@ def main():
         return
 
     print("Delta Robot Control Interface")
-    print("Enter coordinates as: X Y Z  (in mm)")
+    print("Enter coordinates as: X Y Z  (in cm)")
     print("Type 'q' to quit.\n")
 
     while True:
