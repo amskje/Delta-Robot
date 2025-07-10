@@ -117,7 +117,7 @@ void moveToPosition(int idx) {
   Serial.print(", ");
   Serial.print(positions[idx][1]);
   Serial.print(", ");
-  Serial.println(positions[idx][2]);
+  Serial.print(positions[idx][2]);
 
   
   motor1.moveTo(positions[idx][0]);
