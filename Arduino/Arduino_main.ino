@@ -29,7 +29,7 @@ AccelStepper motor1(AccelStepper::DRIVER, STEP1, DIR1);
 AccelStepper motor2(AccelStepper::DRIVER, STEP2, DIR2);
 AccelStepper motor3(AccelStepper::DRIVER, STEP3, DIR3);
 
-#define MAX_WAYPOINTS 3
+#define MAX_WAYPOINTS 10
 
 int positions[MAX_WAYPOINTS][3];
 int waypoint_count = 0;
@@ -62,19 +62,14 @@ bool debounceRead(int pin, unsigned long &lastChangeTime, bool &lastStableState)
 
 
 
-
-
 void homeMotor(AccelStepper &motor, int limitPin) {
   
-
   while (digitalRead(limitPin) == HIGH) {
-    motor.move(10);
+    motor.move(100);//Endre her hvis endre step på motor, var 10
     motor.run();
-    Serial.println(""); // signal Jetson
-
   }
   motor.setCurrentPosition(0);
-  motor.moveTo(-100);
+  motor.moveTo(-1000);//Endre her hvis endre step på motor, var -100
   while (motor.distanceToGo() != 0) {
     motor.run();
   }
@@ -86,12 +81,12 @@ void checkLimitSwitches() {
   bool limit2Triggered = debounceRead(LIMIT2, lastLimit2Change, stableLimit2State);
   bool limit3Triggered = debounceRead(LIMIT3, lastLimit3Change, stableLimit3State);
 
-  if (limit1Triggered) Serial.println("LIMIT1 triggered");
-  if (limit2Triggered) Serial.println("LIMIT2 triggered");
-  if (limit3Triggered) Serial.println("LIMIT3 triggered");
+  //if (limit1Triggered) Serial.println("[Arduino] LIMIT1 triggered");
+  //if (limit2Triggered) Serial.println("[Arduino] LIMIT2 triggered");
+  //if (limit3Triggered) Serial.println("[Arduino] LIMIT3 triggered");
 
   if (limit1Triggered || limit2Triggered || limit3Triggered) {
-    Serial.println("CheckLimitSwitches triggered");
+    //Serial.println("[Arduino] CheckLimitSwitches triggered");
 
     stopAllMotors();
     digitalWrite(PUMP, LOW); // Stop the pump if running
@@ -112,12 +107,12 @@ void moveToPosition(int idx) {
 
   // More advanced motor control to ensure smooth movement in the x-y plane to be added here
 
-  Serial.print("Moving to: ");
+  Serial.print("[Arduino] Moving to: ");
   Serial.print(positions[idx][0]);
   Serial.print(", ");
   Serial.print(positions[idx][1]);
   Serial.print(", ");
-  Serial.print(positions[idx][2]);
+  Serial.println(positions[idx][2]);
 
   
   motor1.moveTo(positions[idx][0]);
@@ -130,7 +125,7 @@ void moveToPosition(int idx) {
 
   long maxDist = max(d1, max(d2, d3));
 
-  float baseSpeed = 2000.0; // max speed for longest-moving motor
+  float baseSpeed = 80000.0; // max speed for longest-moving motor
   
   // Adjust speed to only move in x-y plane
   motor1.setMaxSpeed(baseSpeed * d1 / maxDist);
@@ -157,6 +152,9 @@ void readSerialMessage() {
 
   if (newMessage) {
     inputBuffer.trim();
+
+    //Serial.print("[Arduino] Received inputbuffer: ");
+    //Serial.println(inputBuffer);
 
     if (inputBuffer == "POSITION") {
       waypoint_count = 0;
@@ -195,6 +193,14 @@ void goHome() {
   homeMotor(motor1, LIMIT1);
   homeMotor(motor2, LIMIT2);
   homeMotor(motor3, LIMIT3);
+
+
+  Serial.print("M1 = ");
+  Serial.print(motor1.currentPosition());
+  Serial.print(", M2 = ");
+  Serial.print(motor2.currentPosition());
+  Serial.print(", M3 = ");
+  Serial.println(motor3.currentPosition());
 }
 
 void setup() {
@@ -207,13 +213,13 @@ void setup() {
   pinMode(PUMP, OUTPUT);
 
 
-  motor1.setMaxSpeed(4000);
-  motor2.setMaxSpeed(4000);
-  motor3.setMaxSpeed(4000);
+  motor1.setMaxSpeed(80000);
+  motor2.setMaxSpeed(80000);
+  motor3.setMaxSpeed(80000);
 
-  motor1.setAcceleration(2000);
-  motor2.setAcceleration(2000);
-  motor3.setAcceleration(2000);
+  motor1.setAcceleration(40000);
+  motor2.setAcceleration(40000);
+  motor3.setAcceleration(40000);
 
   goHome();
 
