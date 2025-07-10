@@ -68,8 +68,10 @@ def inverse_kinematics(x, y, z):
     ok3, t3 = single_arm_ik(xr3, yr3, z)
     theta3 = t3 - ZERO_ANGLE3 if ok3 else 0.0
 
-    if not (ok1 and ok2 and ok3):
-        print("IK solution failed for one or more arms.")
+    if not ok1: print("  → Arm 1 failed")
+    if not ok2: print("  → Arm 2 failed")
+    if not ok3: print("  → Arm 3 failed")
+
 
     return theta1, theta2, theta3
 
