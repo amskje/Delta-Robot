@@ -101,6 +101,11 @@ def main():
                 waypoints=WAYPOINTS
             )
 
+            print("Calculating ik for ")
+            theta1, theta2, theta3 = kinematics.inverse_kinematics(x*10, y*10, z*10)
+
+            print(f"Ik angles (degrees): t1= {theta1:.2f}, t2= {theta2:.2f}, t3={theta3:.2f}")
+
             if angles:
                 send_to_arduino(ser, angles)
                 current_position = Position(x, y, z)
