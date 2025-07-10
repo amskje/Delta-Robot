@@ -37,8 +37,12 @@ def single_arm_ik(x0, y0, z0):
 
     d = -(a + b * y1)**2 + l_biceps * (b**2 * l_biceps + l_biceps)
 
+    print(f"  [IK] x={x0:.2f}, y={y0:.2f}, z={z0:.2f}, d={d:.2f}")
+
     if d < 0:
-        return False, 0.0  # Not reachable
+        print(f"  → FAIL: d={d:.2f} < 0 → unreachable")
+        return False, 0.0
+
 
     yj = (y1 - a * b - math.sqrt(d)) / (b**2 + 1)
     zj = a + b * yj
@@ -72,9 +76,7 @@ def inverse_kinematics(x, y, z):
     if not ok2: print("  → Arm 2 failed")
     if not ok3: print("  → Arm 3 failed")
 
-
     return theta1, theta2, theta3
-
 
 def plan_linear_move(
     x0: float, y0: float, z0: float,
@@ -104,6 +106,12 @@ def plan_linear_move(
         z = z0 + t * (z1 - z0)
 
         theta1, theta2, theta3 = inverse_kinematics(x, y, z)
+
+        # Skip if any angle is clearly invalid (0.0 used as error signal)
+        if theta1 == 0.0 or theta2 == 0.0 or theta3 == 0.0:
+            print(f"  → Skipping invalid IK at x={x:.2f}, y={y:.2f}, z={z:.2f}")
+            continue
+
         angles_list.append((
             round(theta1 * pulses_per_rev / 360),
             round(theta2 * pulses_per_rev / 360),
