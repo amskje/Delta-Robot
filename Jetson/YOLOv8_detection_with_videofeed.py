@@ -14,7 +14,7 @@ MODEL_PATH = "best.pt"
 PIXEL_TO_CM_X = SURFACE_WIDTH_CM / FRAME_WIDTH
 PIXEL_TO_CM_Y = SURFACE_HEIGHT_CM / FRAME_HEIGHT
 IMG_CENTER_X = FRAME_WIDTH // 2
-IMG_CENTER_Y = FRAME_HEIGHT // 2
+IMG_CENTER_Y = int((FRAME_HEIGHT // 2) - (1.6 / PIXEL_TO_CM_Y)) # Factored in the offset between camera and kinematics center
 
 # Custom class names
 class_names = [
@@ -62,16 +62,19 @@ while True:
         y_pixel = int(box.xywh[0][1].item())
 
         # Draw red center dot
-        cv2.circle(annotated_frame, (x_pixel, y_pixel), radius=5, color=(0, 0, 255), thickness=-1)
+        cv2.circle(annotated_frame, (x_pixel, y_pixel), radius=2, color=(0, 0, 255), thickness=-1)
 
         # Convert to real-world centered coordinates
         x_cm = (x_pixel - IMG_CENTER_X) * PIXEL_TO_CM_X
-        y_cm = (y_pixel - IMG_CENTER_Y) * PIXEL_TO_CM_Y
+        y_cm = (y_pixel - IMG_CENTER_Y) * PIXEL_TO_CM_Y - 1.6
 
         # Overlay coordinate text
         coord_label = f"({x_cm:.1f}, {y_cm:.1f}) cm"
         cv2.putText(annotated_frame, coord_label, (x_pixel + 5, y_pixel - 5),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+
+    # Draw blue center dot for the kinematics frame in cm → (IMG_CENTER_X, IMG_CENTER_Y - y_offset) in pixels
+    cv2.circle(annotated_frame, (IMG_CENTER_X, IMG_CENTER_Y), radius=2, color=(255, 0, 0), thickness=-1)
 
     # Show frame
     cv2.imshow("🍬 YOLOv8 Live Detection", annotated_frame)
