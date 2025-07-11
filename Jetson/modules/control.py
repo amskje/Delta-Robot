@@ -2,15 +2,24 @@ import math
 import comms
 import kinematics
 from typing import List, Tuple
+from dataclasses import dataclass
+
+@dataclass
+class ControlConfig:
+    # Base parameters
+    WAYPOINTS: int = 5
+    INITIAL_POSITION: list[float] = kinematics.Position(3.373, 0.184, 257.886)  # Initial position after goHome()
+
+def config() -> ControlConfig:
+    return ControlConfig()
 
 
 class DeltaRobotController:
-    def __init__(self, serial_comm: comms.SerialComm, max_waypoints=20):
+    def __init__(self, serial_comm: comms.SerialComm):
         self.serial = serial_comm  # Instance of SerialComm
         self.current_pos = [0.0, 0.0, 0.0]  # Track robot position in mm
-        self.max_waypoints = max_waypoints
 
-    def _send_angles_sequence(self, angles_list):
+    def send_angles_sequence(self, angles_list):
         self.serial.send_message("POSITION")
         if not self.serial.wait_for_ack("READY"):
             print("[Error] Arduino not ready for POSITION.")
@@ -63,7 +72,7 @@ class DeltaRobotController:
             *target_pos,
             *dropoff_pos,
             dropoff_angles,
-            waypoints=self.max_waypoints
+            waypoints=config().WAYPOINTS
         )
 
         if not self._send_angles_sequence(dropoff_angles):

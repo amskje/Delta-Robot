@@ -2,16 +2,22 @@ import rclpy
 from std_msgs.msg import String
 import serial
 import time
+from dataclasses import dataclass
 
-# Constants (adjust as needed)
-ROS_TOPIC = 'PI_command'
-SERIAL_PORT = '/dev/ttyUSB0'
-BAUD_RATE = 115200
-ACK_TIMEOUT = 5  # seconds
+@dataclass
+class CommunicationsConfig:
+    ROS_TOPIC: str = 'PI_command'
+    SERIAL_PORT: str = '/dev/ttyACM0'
+    BAUD_RATE: int = 57600 # Check if matches with Arduino
+    ACK_TIMEOUT: int = 5  # Seconds
+
+def config() -> CommunicationsConfig:
+    return CommunicationsConfig()
+
 
 
 class ROSComm:
-    def __init__(self, topic=ROS_TOPIC, node_name='Jetson'):
+    def __init__(self, topic=config().ROS_TOPIC, node_name='Jetson'):
         if not rclpy.ok():
             rclpy.init()
         self.node = rclpy.create_node(node_name)
@@ -25,7 +31,7 @@ class ROSComm:
         self._latest_msg = None
         self.node.get_logger().info(f"ROS initialized on topic '{topic}'")
 
-    def _receive_callback(self, msg: String):
+    def receive_callback(self, msg: String):
         self.node.get_logger().info(f"Received: {msg.data}")
         self._latest_msg = msg.data
 
@@ -50,7 +56,7 @@ class ROSComm:
 
 
 class SerialComm:
-    def __init__(self, port=SERIAL_PORT, baudrate=BAUD_RATE):
+    def __init__(self, port=config().SERIAL_PORT, baudrate=config().BAUD_RATE):
         self.conn = serial.Serial(port, baudrate, timeout=1)
         time.sleep(2)
         print(f"[Serial] Connected to {port}.")
@@ -60,7 +66,7 @@ class SerialComm:
         self.conn.write(full_msg.encode())
         print(f"[Serial] Sent: {full_msg.strip()}")
 
-    def wait_for_ack(self, expected_ack='OK', timeout=ACK_TIMEOUT):
+    def wait_for_ack(self, expected_ack='OK', timeout=config().ACK_TIMEOUT):
         start = time.time()
         while time.time() - start < timeout:
             if self.conn.in_waiting > 0:
@@ -73,3 +79,40 @@ class SerialComm:
 
     def close(self):
         self.conn.close()
+
+
+# Arduino sync
+def wait_for_arduino_ready(ser):
+    print("Waiting for Arduino to finish setup...")
+    deadline = time.time() + 12
+    while time.time() < deadline:
+        try:
+            line = ser.readline().decode().strip()
+            if line:
+                print(f"[Arduino]: {line}")
+                if "Finished setup" in line:
+                    print("Arduino is ready.\n")
+                    return True
+        except:
+            pass
+    print("Timed out waiting for Arduino.")
+    return False
+
+# Send angles to Arduino
+def send_to_arduino(ser, angles_list):
+    ser.reset_input_buffer()
+    print("Sending angles to Arduino...")
+    ser.write(b"POSITION\n")
+    ser.flush()
+    time.sleep(0.1)
+
+    for idx, angle_set in enumerate(angles_list):
+        t1, t2, t3 = angle_set
+        cmd = f"ANGLES {int(t1)},{int(t2)},{int(t3)}\n"
+        ser.write(cmd.encode())
+        ser.flush()
+        time.sleep(0.05)
+
+    ser.write(b"GO\n")
+    ser.flush()
+    print("Movement command sent.\n")
