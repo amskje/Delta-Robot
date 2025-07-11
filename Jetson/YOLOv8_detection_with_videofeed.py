@@ -66,7 +66,7 @@ while True:
 
         # Convert to real-world centered coordinates
         x_cm = (x_pixel - IMG_CENTER_X) * PIXEL_TO_CM_X
-        y_cm = (y_pixel - IMG_CENTER_Y) * PIXEL_TO_CM_Y - 1.6
+        y_cm = (y_pixel - IMG_CENTER_Y) * PIXEL_TO_CM_Y
 
         # Overlay coordinate text
         coord_label = f"({x_cm:.1f}, {y_cm:.1f}) cm"
@@ -75,6 +75,12 @@ while True:
 
     # Draw blue center dot for the kinematics frame in cm → (IMG_CENTER_X, IMG_CENTER_Y - y_offset) in pixels
     cv2.circle(annotated_frame, (IMG_CENTER_X, IMG_CENTER_Y), radius=2, color=(255, 0, 0), thickness=-1)
+
+    # Testing dots
+    for i in range(1, 13):
+        cv2.circle(annotated_frame, (IMG_CENTER_X + int(i*21.62), IMG_CENTER_Y), radius=2, color=(0, 255, 0), thickness=-1)
+    for j in range(1, 13):
+        cv2.circle(annotated_frame, (IMG_CENTER_X, IMG_CENTER_Y + int(j*21.62)), radius=2, color=(0, 255, 0), thickness=-1)
 
     # Show frame
     cv2.imshow("🍬 YOLOv8 Live Detection", annotated_frame)

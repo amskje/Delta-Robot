@@ -37,8 +37,6 @@ def single_arm_ik(x0, y0, z0):
 
     d = -(a + b * y1)**2 + l_biceps * (b**2 * l_biceps + l_biceps)
 
-    print(f"  [IK] x={x0:.2f}, y={y0:.2f}, z={z0:.2f}, d={d:.2f}")
-
     if d < 0:
         print(f"  → FAIL: d={d:.2f} < 0 → unreachable")
         return False, 0.0
@@ -109,7 +107,6 @@ def plan_linear_move(
 
         # Skip if any angle is clearly invalid (0.0 used as error signal)
         if theta1 == 0.0 or theta2 == 0.0 or theta3 == 0.0:
-            print(f"  → Skipping invalid IK at x={x:.2f}, y={y:.2f}, z={z:.2f}")
             continue
 
         angles_list.append((
