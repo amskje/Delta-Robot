@@ -37,7 +37,7 @@ def main():
 
     # Connect to Arduino
     try:
-        ser = serial.Serial(visCFG.SERIAL_PORT, visCFG.SERIAL_BAUD, timeout=1)
+        ser = serial.Serial(comCFG.SERIAL_PORT, comCFG.BAUD_RATE, timeout=1)
         time.sleep(2)
     except Exception as e:
         print("Failed to open serial port:", e)
