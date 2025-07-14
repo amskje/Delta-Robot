@@ -2,31 +2,20 @@ import sys
 import os
 import serial
 import time
-
-# Add the 'modules' folder to Python's import path
-sys.path.append(os.path.join(os.path.dirname(__file__), "modules"))
-
 import cv2
 from ultralytics import YOLO
-import kinematics
 
-# ==== CONFIGURATION ====
-FRAME_WIDTH = 640
-FRAME_HEIGHT = 640
-SURFACE_WIDTH_CM = 29.6
-SURFACE_HEIGHT_CM = 29.6
-CONF_THRESHOLD = 0.9
-MODEL_PATH = "best.pt"
-SEND_FIRST_ONLY = True
-SERIAL_PORT = '/dev/ttyACM0'
-SERIAL_BAUD = 57600
-Z_HEIGHT_CM = 25.0
-# ========================
+# Importing custom modules
+import modules.comms as comms
+import modules.control as control
+import modules.kinematics as kinematics
+import modules.vision as vision
 
-PIXEL_TO_CM_X = SURFACE_WIDTH_CM / FRAME_WIDTH
-PIXEL_TO_CM_Y = SURFACE_HEIGHT_CM / FRAME_HEIGHT
-IMG_CENTER_X = FRAME_WIDTH // 2
-IMG_CENTER_Y = FRAME_HEIGHT // 2
+# Configurations
+comCFG = comms.config()  # Configs from comms module
+conCFG = control.config() # Configs from control module
+kinCFG = kinematics.config() # Configs from kinematics module
+visCFG = vision.config() # Configs from vision module
 
 class_names = [
     "Banan", "Cocos", "Crisp", "Daim", "Fransk", "Golden",
@@ -34,41 +23,28 @@ class_names = [
 ]
 
 # Load YOLO model
-model = YOLO(MODEL_PATH)
+model = YOLO(visCFG.MODEL_PATH)
 
 # GStreamer pipeline
 gst_pipeline = (
     "nvarguscamerasrc sensor-mode=0 ! "
     "video/x-raw(memory:NVMM), width=3280, height=2464, format=NV12, framerate=21/1 ! "
     "nvvidconv left=408 top=0 right=2872 bottom=2464 ! "
-    f"video/x-raw, width={FRAME_WIDTH}, height={FRAME_HEIGHT}, format=BGRx ! "
+    f"video/x-raw, width={visCFG.FRAME_WIDTH}, height={visCFG.FRAME_HEIGHT}, format=BGRx ! "
     "videoconvert ! video/x-raw, format=BGR ! appsink"
 )
 
-class Position:
-    def __init__(self, x=0.0, y=0.0, z=0.0):
-        self.x = x
-        self.y = y
-        self.z = z
 
-current_position = Position(3.373, 0.184, 257.886)  # Initial calibrated position
+current_position = conCFG.INITIAL_POSITION # Initial calibrated position
 angles = []
 
-def read_serial_responses(ser):
-    while ser.in_waiting > 0:
-        try:
-            line = ser.readline().decode().strip()
-            if line:
-                print(f"[Arduino]: {line}")
-        except UnicodeDecodeError:
-            pass  # Skip malformed lines
+
 
 
 def main():
     # Open serial connection to Arduino
     try:
-        ser = serial.Serial(SERIAL_PORT, SERIAL_BAUD, timeout=1)
-        time.sleep(2)  # wait for Arduino reset
+        ser = comms.SerialComm(comCFG.SERIAL_PORT, comCFG.BAUD_RATE, timeout=1).conn
         print("Serial connected to Arduino.")
     except Exception as e:
         print("Failed to open serial port:", e)
@@ -87,7 +63,7 @@ def main():
 
     try:
         while True:
-            read_serial_responses(ser)  # ← Add this to check serial responses
+            comms.SerialComm.read_serial_responses(ser)  # ← Add this to check serial responses
 
             key = cv2.waitKey(1) & 0xFF
             if key == ord('b'):
@@ -104,7 +80,7 @@ def main():
                     continue
 
                 cv2.imshow("YOLO Trigger Window", latest_frame)
-                results = model(latest_frame, conf=CONF_THRESHOLD)[0]
+                results = model(latest_frame, conf=visCFG.CONF_THRESHOLD)[0]
 
                 if not results.boxes:
                     print("No object detected.")
@@ -113,11 +89,11 @@ def main():
                 box = results.boxes[0]
                 x_pixel = int(box.xywh[0][0].item())
                 y_pixel = int(box.xywh[0][1].item())
-                x_cm = (x_pixel - IMG_CENTER_X) * PIXEL_TO_CM_X
-                y_cm = (y_pixel - IMG_CENTER_Y) * PIXEL_TO_CM_Y
+                x_cm = (x_pixel - visCFG.IMG_CENTER_X) * visCFG.PIXEL_TO_CM_X
+                y_cm = (y_pixel - visCFG.IMG_CENTER_Y) * visCFG.PIXEL_TO_CM_Y
 
                 angles.clear()
-                kinematics.plan_linear_move(current_position.x, current_position.y, current_position.z, x_cm, y_cm, Z_HEIGHT_CM, angles)
+                kinematics.plan_linear_move(current_position.x, current_position.y, current_position.z, x_cm, y_cm, visCFG.Z_HEIGHT_CM, angles)
 
                 ser.write(b"POSITION\n")
                 ser.flush()

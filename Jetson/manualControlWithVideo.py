@@ -78,8 +78,6 @@ def main():
                 conCFG.WAYPOINTS
             )
 
-            theta1, theta2, theta3 = kinematics.inverse_kinematics(x * 10, y * 10, z * 10)
-
             if angles:
                 comms.send_to_arduino(ser, angles)
                 current_position = kinematics.Position(x, y, z)

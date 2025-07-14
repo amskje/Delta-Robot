@@ -10,6 +10,8 @@ class VisionConfig:
     SURFACE_WIDTH_CM: float = 29.6
     SURFACE_HEIGHT_CM: float = 29.6
     CAM_TO_ROBOT_Y_OFFSET_CM: float = 1.6
+    MODEL_PATH: str = "best.pt"
+    CONF_THRESHOLD: float = 0.9
 
     # Derived parameters will be computed
     PIXEL_TO_CM_X: float = None
@@ -62,6 +64,9 @@ def detect_target(model, target_class):
     if not cap.isOpened():
         print("Failed to open camera.")
         return []
+    
+    cv2.namedWindow("YOLO Trigger Window", cv2.WINDOW_NORMAL)
+    cv2.resizeWindow("YOLO Trigger Window", 200, 100)
 
     ret, frame = cap.read()
     cap.release()

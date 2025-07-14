@@ -56,9 +56,9 @@ class ROSComm:
 
 
 class SerialComm:
-    def __init__(self, port=config().SERIAL_PORT, baudrate=config().BAUD_RATE):
-        self.conn = serial.Serial(port, baudrate, timeout=1)
-        time.sleep(2)
+    def __init__(self, port=config().SERIAL_PORT, baudrate=config().BAUD_RATE, timeout=1):
+        self.conn = serial.Serial(port, baudrate, timeout=timeout)
+        time.sleep(2) # Wait for Arduino reset
         print(f"[Serial] Connected to {port}.")
 
     def send_message(self, message: str):
@@ -76,6 +76,22 @@ class SerialComm:
                     return True
         print("[Serial] ACK timeout.")
         return False
+    
+    def read_line(self):
+        return self.conn.readline().decode().strip()
+
+    def in_waiting(self):
+        return self.conn.in_waiting
+    
+    def read_serial_responses(serial_comm):
+        while serial_comm.in_waiting():
+            try:
+                line = serial_comm.read_line()
+                if line:
+                    print(f"[Arduino]: {line}")
+            except UnicodeDecodeError:
+                pass
+
 
     def close(self):
         self.conn.close()
