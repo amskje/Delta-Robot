@@ -34,7 +34,7 @@ def main():
 
     # Start video feed thread
     stop_event = Event()
-    video_thread = threading.Thread(target=vision.video_loop(), args=(cap, stop_event))
+    video_thread = threading.Thread(target=vision.video_loop, args=(cap, stop_event))
     video_thread.start()
 
     # Connect to Arduino
