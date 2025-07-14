@@ -1,7 +1,5 @@
 import math
 from typing import List, Tuple
-
-import math
 from dataclasses import dataclass
 
 @dataclass

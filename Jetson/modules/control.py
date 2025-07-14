@@ -1,6 +1,5 @@
-import math
-import comms
-import kinematics
+from . import comms
+from . import kinematics
 from typing import List, Tuple
 from dataclasses import dataclass
 

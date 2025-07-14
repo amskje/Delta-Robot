@@ -64,9 +64,6 @@ def detect_target(model, target_class):
     if not cap.isOpened():
         print("Failed to open camera.")
         return []
-    
-    cv2.namedWindow("YOLO Trigger Window", cv2.WINDOW_NORMAL)
-    cv2.resizeWindow("YOLO Trigger Window", 200, 100)
 
     ret, frame = cap.read()
     cap.release()
