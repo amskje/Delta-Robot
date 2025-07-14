@@ -13,6 +13,9 @@ RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 #Set working directory inside the container
 WORKDIR /home/dev/Delta-Robot
 
+
+
+
 #Default command
 CMD ["bash"]
 

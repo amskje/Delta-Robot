@@ -4,38 +4,50 @@ from enum import Enum
 from tkinter import messagebox
 
  
-'''
+
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 import threading
-'''
- 
+
+
+
+#gjøre bakgrunn til kanpp liks som bakrunn, legge dette til i tk.Button: bg='black', fg='red', borderwidth=0, highlightthickness=0, relief='flat'
+
+
+
+
 
 # --- Global Variables ---
 
-send_message = False
+send_message = True
 
  
 # --- Twist Enum ---
 
 class Twist(Enum):
-    COCOS = 1
-    DAIM = 2
-    CARAMEL = 3
-    CRISP = 4
-    FRANSK = 5
-    GOLDEN = 6
-    JAPP = 7
-    NOTTI = 8
-
+    Cocos = 1
+    Daim = 2
+    Karamel = 3
+    Crisp = 4
+    Fransk = 5
+    Golden = 6
+    Japp = 7
+    Notti = 8
+    
+    '''
+    Eclairs = 9
+    Toffee = 10
+    Lakris = 11
+    Bannan = 12
+    '''
 # --- ROS Node ---
-'''
+
 class TwistPublisher(Node):
 
     def __init__(self):
         super().__init__('twist_publisher')
-        self.publisher_ = self.create_publisher(String, 'twist_selection', 10)
+        self.publisher_ = self.create_publisher(String, 'PI_command', 10)
 
  
 
@@ -46,7 +58,7 @@ class TwistPublisher(Node):
         self.get_logger().info(f"Sent twist: {msg.data}")
 
  
-'''
+
 # --- App Class ---
 
 class App(tk.Tk):
@@ -94,7 +106,7 @@ class StartScreen(tk.Frame):
         button_frame = tk.Frame(self, bg="black")
         button_frame.pack()
 
-        tk.Button(button_frame, text="Manuell Modus", font=("Arial", 16), width=20, height=2,
+        tk.Button(button_frame, text="Manuell Modus", font=("Arial", 16), width=20, height=2, bg='black', fg='red', borderwidth=0, highlightthickness=0, relief='flat',
                   command=lambda: controller.show_frame(ManualScreen)).grid(row=0, column=0, padx=10, pady=10)
 
         tk.Button(button_frame, text="Automatisk Modus", font=("Arial", 16), width=20, height=2,
@@ -198,7 +210,7 @@ class TestScreen(tk.Frame):
             photo = ImageTk.PhotoImage(img)
             self.images.append(photo)
 
-            btn = tk.Button(self, image=photo, command=lambda t=twist: self.on_button_click(t))
+            btn = tk.Button(self, image=photo, command=lambda t=twist: self.on_button_click(t), bg='black', activebackground='black', borderwidth=0, highlightthickness=0, relief='flat',)
             btn.place(x=positions[i][0], y=positions[i][1])
 
         logo_img = Image.open("twist_bilder/placeholder.jpg").resize((160, 430))
@@ -213,8 +225,6 @@ class TestScreen(tk.Frame):
 
         if send_message:
             twist_publisher.send_twist(twist.name)
-
-        messagebox.showinfo("Valg", f"Du valgte {twist.name}")
 
  
 
