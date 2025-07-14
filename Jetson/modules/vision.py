@@ -131,12 +131,12 @@ def draw_overlay(frame):
         cv2.circle(frame, (config().IMG_CENTER_X, config().IMG_CENTER_Y - int(j * 21.62)), radius=2, color=(0, 255, 0), thickness=-1)
 
 # Video thread
-def video_loop(cap):
+def video_loop(cap, stop_event):
     global running
     cv2.namedWindow("🍬 YOLOv8 Live Detection", cv2.WINDOW_NORMAL)
     cv2.resizeWindow("🍬 YOLOv8 Live Detection", config().FRAME_WIDTH, config().FRAME_HEIGHT)
 
-    while running:
+    while not stop_event.is_set():
         ret, frame = cap.read()
         if not ret:
             print("⚠️ Failed to read frame.")
@@ -147,7 +147,7 @@ def video_loop(cap):
 
         # Handle 'q' key press in video window
         if cv2.waitKey(1) & 0xFF == ord('q'):
-            running = False
+            stop_event.set()
             break
 
     cap.release()
