@@ -9,7 +9,7 @@ class TwistPublisher(Node):
 
     def __init__(self):
         super().__init__('twist_publisher')
-        self.publisher_ = self.create_publisher(String, 'twist_selection', 10)
+        self.publisher_ = self.create_publisher(String, 'PI_command', 10)
 
     def send_twist(self, twist_name: str):
         msg = String()

@@ -7,7 +7,7 @@ class TwistListener(Node):
         super().__init__('twist_listener')
         self.subscription = self.create_subscription(
             String,
-            'twist_selection',
+            'PI_command',
             self.listener_callback,
             10
         )
