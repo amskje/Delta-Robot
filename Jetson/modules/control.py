@@ -7,7 +7,7 @@ from dataclasses import dataclass
 class ControlConfig:
     # Base parameters
     WAYPOINTS: int = 5
-    INITIAL_POSITION: list[float] = kinematics.Position(3.373, 0.184, 257.886)  # Initial position after goHome()
+    INITIAL_POSITION: List[float] = kinematics.Position(3.373, 0.184, 257.886)  # Initial position after goHome()
 
 def config() -> ControlConfig:
     return ControlConfig()
