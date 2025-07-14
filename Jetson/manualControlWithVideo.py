@@ -5,6 +5,7 @@ import serial
 import time
 import threading
 import cv2
+from threading import Event
 
 # Importing custom modules
 import modules.comms as comms
@@ -32,7 +33,8 @@ def main():
         return
 
     # Start video feed thread
-    video_thread = threading.Thread(target=vision.video_loop, args=(cap,))
+    stop_event = Event()
+    video_thread = threading.Thread(target=vision.video_loop(), args=(cap, stop_event))
     video_thread.start()
 
     # Connect to Arduino
@@ -41,13 +43,13 @@ def main():
         time.sleep(2)
     except Exception as e:
         print("Failed to open serial port:", e)
-        running = False
+        stop_event.set()
         video_thread.join()
         return
 
     if not comms.wait_for_arduino_ready(ser):
         ser.close()
-        running = False
+        stop_event.set()
         video_thread.join()
         return
 
@@ -89,6 +91,7 @@ def main():
 
     print("Shutting down...")
     ser.close()
+    stop_event.set()
     running = False
     video_thread.join()
     print("Goodbye!")

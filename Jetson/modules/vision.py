@@ -131,8 +131,6 @@ def draw_overlay(frame):
         cv2.circle(frame, (config().IMG_CENTER_X, config().IMG_CENTER_Y - int(j * 21.62)), radius=2, color=(0, 255, 0), thickness=-1)
 
 # Video thread
-
-"""
 def video_loop(cap):
     global running
     cv2.namedWindow("🍬 YOLOv8 Live Detection", cv2.WINDOW_NORMAL)
@@ -154,4 +152,3 @@ def video_loop(cap):
 
     cap.release()
     cv2.destroyAllWindows()
-"""
