@@ -44,9 +44,12 @@ def main():
                     dropoff_pos=(0, 0, 250)  # Example drop-off position
                 )
 
-
         if state == RobotState.ERROR:
             print("[Main] Error state detected. Resetting robot...")
+        elif state == RobotState.PAUSED:
+            print("[Main] Robot is paused. Waiting for resume command...")
+        elif state == RobotState.RESETTING:
+            print("[Main] Resetting robot, but nothing because not implemented yet :)")
             
     
 if __name__ == '__main__':
