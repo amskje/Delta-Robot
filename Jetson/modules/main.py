@@ -1,7 +1,10 @@
+import time
+from enum import Enum, auto
+
 import vision
 import comms
 import control
-from enum import Enum, auto
+
 
 class RobotState(Enum):
     IDLE = auto()
@@ -10,47 +13,82 @@ class RobotState(Enum):
     PAUSED = auto()
     RESETTING = auto()
 
-state = RobotState.IDLE
 
-order = None
+def log(msg: str):
+    """Prints a log message with timestamp."""
+    print(f"[{time.strftime('%H:%M:%S')}] {msg}")
 
 
 def main():
+    # Initialize modules
     ROS = comms.ROSComm()
     serial = comms.SerialComm()
     controller = control.DeltaRobotController(serial)
     model = vision.init_yolo()
 
+    # Initial state
+    state = RobotState.IDLE
+    order = None
+
+    log("System initialized. Entering main loop...")
 
     while ROS.node.ok():
         ROS.spin_once(timeout_sec=0.1)
 
         if state == RobotState.IDLE:
-            print("[Main] Robot is idle. Waiting for commands...")
+            log("Robot is idle. Waiting for commands...")
             msg = ROS.get_latest_message()
             if msg in vision.class_names:
                 order = msg
                 ROS.clear_message()
                 state = RobotState.DELIVERING
             else:
-                print("[Main] No valid order received. Waiting for next command...")
-        
-        if state == RobotState.DELIVERING:
-            matches = vision.detect_target(model, order)
-            # Choose target, now it just picks the first match
+                time.sleep(0.5)  # Prevent rapid idle polling
+
+        elif state == RobotState.DELIVERING:
+            log(f"Received order for: {order}")
+            matches = []
+            retry_count = 0
+
+            # Retry YOLO detection up to 3 times
+            while not matches and retry_count < 3:
+                matches = vision.detect_target(model, order)
+                if not matches:
+                    log(f"No target found on attempt {retry_count + 1}. Retrying...")
+                    retry_count += 1
+                    time.sleep(1)
+
             if matches:
-                controller.twist_delivery(
-                    target_pos=(matches[0][1], matches[0][2], 250),  # x_cm, y_cm, z=250
-                    dropoff_pos=(0, 0, 250)  # Example drop-off position
+                target_x, target_y = matches[0][1], matches[0][2]
+                log(f"Target detected at x={target_x:.2f} cm, y={target_y:.2f} cm")
+
+                success = controller.twist_delivery(
+                    target_pos=(target_x, target_y, 250),
+                    dropoff_pos=(0, 0, 250)
                 )
 
-        if state == RobotState.ERROR:
-            print("[Main] Error state detected. Resetting robot...")
+                state = RobotState.IDLE if success else RobotState.ERROR
+            else:
+                log("Failed to detect target after retries. Returning to IDLE.")
+                state = RobotState.IDLE
+
+        elif state == RobotState.ERROR:
+            log("Error state detected. Awaiting manual reset or shutdown.")
+            time.sleep(1)  # Idle delay during error state
+
         elif state == RobotState.PAUSED:
-            print("[Main] Robot is paused. Waiting for resume command...")
+            log("Robot is paused. Awaiting resume command.")
+            time.sleep(1)
+
         elif state == RobotState.RESETTING:
-            print("[Main] Resetting robot, but nothing because not implemented yet :)")
-            
-    
+            log("Resetting robot...")
+            # Optional: controller.reset_robot() if implemented
+            state = RobotState.IDLE
+
+        else:
+            log("Unknown state. Switching to ERROR.")
+            state = RobotState.ERROR
+
+
 if __name__ == '__main__':
     main()
