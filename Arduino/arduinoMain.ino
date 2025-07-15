@@ -75,6 +75,76 @@ void homeMotor(AccelStepper &motor, int limitPin) {
   }
 }
 
+
+//go home function that sends all motors to home pos at the same time
+void goHome3() {
+  // Move all motors toward their limits simultaneously
+  //It uses acceleration and speed setup in the setup function
+  //motor1.setMaxSpeed(20000);
+  //motor2.setMaxSpeed(20000);
+  //motor3.setMaxSpeed(20000);
+
+  //motor1.setAcceleration(10000);
+  //motor2.setAcceleration(10000);
+  //motor3.setAcceleration(10000);
+
+  motor1.move(20000);  // move far enough to ensure hitting limit
+  motor2.move(20000);
+  motor3.move(20000);
+
+  bool limit1Hit = false;
+  bool limit2Hit = false;
+  bool limit3Hit = false;
+
+  while (!limit1Hit || !limit2Hit || !limit3Hit) {
+    if (!limit1Hit && digitalRead(LIMIT1) == LOW) {
+      motor1.stop();
+      limit1Hit = true;
+    } else if (!limit1Hit) {
+      motor1.run();
+    }
+
+    if (!limit2Hit && digitalRead(LIMIT2) == LOW) {
+      motor2.stop();
+      limit2Hit = true;
+    } else if (!limit2Hit) {
+      motor2.run();
+    }
+
+    if (!limit3Hit && digitalRead(LIMIT3) == LOW) {
+      motor3.stop();
+      limit3Hit = true;
+    } else if (!limit3Hit) {
+      motor3.run();
+    }
+  }
+
+  // Set all motors to position 0
+  motor1.setCurrentPosition(0);
+  motor2.setCurrentPosition(0);
+  motor3.setCurrentPosition(0);
+
+  // Back off slightly from limit switches in sync
+  motor1.moveTo(-1000);
+  motor2.moveTo(-1000);
+  motor3.moveTo(-1000);
+
+  while (motor1.distanceToGo() != 0 ||
+         motor2.distanceToGo() != 0 ||
+         motor3.distanceToGo() != 0) {
+    motor1.run();
+    motor2.run();
+    motor3.run();
+  }
+}
+
+
+
+
+
+
+
+
 // Debounced limit switch check
 void checkLimitSwitches() {
   bool limit1Triggered = debounceRead(LIMIT1, lastLimit1Change, stableLimit1State);
@@ -91,9 +161,7 @@ void checkLimitSwitches() {
     stopAllMotors();
     digitalWrite(PUMP, LOW); // Stop the pump if running
 
-    homeMotor(motor1, LIMIT1);
-    homeMotor(motor2, LIMIT2);
-    homeMotor(motor3, LIMIT3);
+    goHome3();
 
     Serial.println("LIMIT");
   }
@@ -194,13 +262,6 @@ void goHome() {
   homeMotor(motor2, LIMIT2);
   homeMotor(motor3, LIMIT3);
 
-
-  Serial.print("M1 = ");
-  Serial.print(motor1.currentPosition());
-  Serial.print(", M2 = ");
-  Serial.print(motor2.currentPosition());
-  Serial.print(", M3 = ");
-  Serial.println(motor3.currentPosition());
 }
 
 void setup() {
@@ -221,7 +282,7 @@ void setup() {
   motor2.setAcceleration(40000);
   motor3.setAcceleration(40000);
 
-  goHome();
+  goHome3();
 
   Serial.println("Finished setup"); // signal Jetson
 }
@@ -241,7 +302,7 @@ void loop() {
       stopAllMotors();
       currentState = IDLE;
       abortRequested = false;
-      goHome();
+      goHome3();
       Serial.println("ABORTED");
       break;
       }
