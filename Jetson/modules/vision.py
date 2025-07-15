@@ -3,6 +3,7 @@ from ultralytics import YOLO
 from dataclasses import dataclass
 import os
 import time
+from pathlib import Path
 
 @dataclass
 class VisionConfig:
@@ -147,7 +148,8 @@ def video_loop(cap, stop_event):
     cv2.resizeWindow("🍬 YOLOv8 Live Detection", config().FRAME_WIDTH, config().FRAME_HEIGHT)
 
     # Setup for frame saving
-    save_dir = "/home/Documents/code/Delta-Robot/Jetson/yolo_frames"  # You can change this path
+    save_dir = str(Path.home() / "Documents/code/Delta-Robot/Jetson/yolo_frames")
+    os.makedirs(save_dir, exist_ok=True)
     last_saved_time = 0
 
     while not stop_event.is_set():
