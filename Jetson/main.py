@@ -1,10 +1,11 @@
 import time
+import rclpy
 from enum import Enum, auto
 
-import vision
-import comms
-import control
-
+import modules.vision as vision
+import modules.comms as comms
+import modules.control as control
+import modules.kinematics as kinematics
 
 class RobotState(Enum):
     IDLE = auto()
@@ -32,7 +33,7 @@ def main():
 
     log("System initialized. Entering main loop...")
 
-    while ROS.node.ok():
+    while rclpy.ok():
         ROS.spin_once(timeout_sec=0.1)
 
         if state == RobotState.IDLE:
@@ -50,8 +51,8 @@ def main():
             matches = []
             retry_count = 0
 
-            # Retry YOLO detection up to 3 times
-            while not matches and retry_count < 3:
+            # Retry YOLO detection up to 15 times
+            while not matches and retry_count < 15:
                 matches = vision.detect_target(model, order)
                 if not matches:
                     log(f"No target found on attempt {retry_count + 1}. Retrying...")

@@ -14,7 +14,7 @@ class KinematicsConfig:
     pulses_per_rev: int = 80000
 
     # Motion planning
-    MAX_waypoints: int = 10
+    MAX_waypoints: int = 5
 
     # Derived/calculated constants
     tan30: float = None
@@ -47,6 +47,7 @@ def single_arm_ik(x0, y0, z0):
     Returns (success, thetaDeg)"""
     y1 = -0.5 * config().tan30 * config().r_base
     y0 -= 0.5 * config().tan30 * config().r_end
+
 
     a = (x0**2 + y0**2 + z0**2 + config().l_biceps**2 - config().l_forearm**2 - y1**2) / (2.0 * z0)
     b = (y1 - y0) / z0
@@ -109,6 +110,8 @@ def plan_linear_move(
         waypoints: Number of linear interpolation steps
     """
 
+    print(f"Planning path from ( {x0}, {y0}, {z0}) to ( {x1}, {y1}, {z1}) with ({waypoints} waypoints)")
+
     angles_list.clear()  # Ensure the list is empty before filling
 
     for i in range(waypoints):
@@ -116,7 +119,7 @@ def plan_linear_move(
         x = x0 + t * (x1 - x0)
         y = y0 + t * (y1 - y0)
         z = z0 + t * (z1 - z0)
-
+        print(f"x{i}: {x}, y{i}: {y}, z{i}: {z}, t: {t}, waypoints: {waypoints}")
         theta1, theta2, theta3 = inverse_kinematics(x, y, z)
 
         # Skip if any angle is clearly invalid (0.0 used as error signal)

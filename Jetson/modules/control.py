@@ -6,7 +6,7 @@ from dataclasses import dataclass
 @dataclass
 class ControlConfig:
     # Base parameters
-    WAYPOINTS: int = 5
+    WAYPOINTS: int = 2 # Minimum 2
     INITIAL_POSITION: List[float] = kinematics.Position(3.373, 0.184, 257.886)  # Initial position after goHome()
 
 def config() -> ControlConfig:
@@ -46,12 +46,16 @@ class DeltaRobotController:
         """
         print(f"[Control] Planning move to pickup at {target_pos}...")
 
+        waypoints = config().WAYPOINTS
+
         # === Phase 1: Plan path to pickup
         pickup_angles = []
+         
+        print(f"current Pos: ({self.current_pos[0]}, {self.current_pos[1]}, {self.current_pos[2]}), target pos: ({target_pos[0]}, {target_pos[1]}, {target_pos[2]})")
         kinematics.plan_linear_move(self.current_pos[0], self.current_pos[1], self.current_pos[2],
-                                    target_pos[0], target_pos[1], target_pos[2], pickup_angles)
+                                    target_pos[0], target_pos[1], target_pos[2], pickup_angles, waypoints=waypoints)
 
-        if not self._send_angles_sequence(pickup_angles):
+        if not self.send_angles_sequence(pickup_angles):
             return False
 
         # === Pickup operation
@@ -74,7 +78,7 @@ class DeltaRobotController:
             waypoints=config().WAYPOINTS
         )
 
-        if not self._send_angles_sequence(dropoff_angles):
+        if not self.send_angles_sequence(dropoff_angles):
             return False
 
         # === Release

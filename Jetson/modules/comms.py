@@ -25,7 +25,7 @@ class ROSComm:
         self.subscriber = self.node.create_subscription(
             String,
             topic,
-            self._receive_callback,
+            self.receive_callback,
             10
         )
         self._latest_msg = None

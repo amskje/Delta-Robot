@@ -10,7 +10,7 @@ class VisionConfig:
     SURFACE_WIDTH_CM: float = 29.6
     SURFACE_HEIGHT_CM: float = 29.6
     CAM_TO_ROBOT_Y_OFFSET_CM: float = 1.6
-    MODEL_PATH: str = "best.pt"
+    MODEL_PATH: str = "modules/best.pt"
     CONF_THRESHOLD: float = 0.9
 
     # Derived parameters will be computed
@@ -46,12 +46,12 @@ gst_pipeline = (
 # Class names
 class_names = [
     "Banan", "Cocos", "Crisp", "Daim", "Fransk", "Golden",
-    "Japp", "karamell", "Lakris", "Notti", "Toffee", "Eclairs"
+    "Japp", "Karamell", "Lakris", "Notti", "Toffee", "Eclairs"
 ]
 
 # === FUNCTIONS ===
 
-def init_yolo(model_path="best.pt"):
+def init_yolo(model_path="modules/best.pt"):
     """Initialize and return the YOLO model."""
     return YOLO(model_path)
 
@@ -60,10 +60,17 @@ def detect_target(model, target_class):
     Capture one frame and return all matching objects of the given class
     as (class_name, x_cm, y_cm, confidence) tuples.
     """
+
     cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
     if not cap.isOpened():
         print("Failed to open camera.")
         return []
+
+
+    #Test
+    for _ in range(20):
+        ret, _ = cap.read()
+    #Test
 
     ret, frame = cap.read()
     cap.release()
@@ -80,7 +87,9 @@ def detect_target(model, target_class):
         class_name = class_names[class_id]
         conf = float(box.conf[0].item())
 
+        print(f"Detected: {class_name}, target: {target_class}")
         if class_name != target_class:
+            print("Mismatch class name")
             continue
 
         x_pixel = int(box.xywh[0][0].item())

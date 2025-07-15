@@ -20,14 +20,18 @@ send_message = False
 # --- Twist Enum ---
 
 class Twist(Enum):
-    COCOS = 1
-    DAIM = 2
-    CARAMEL = 3
-    CRISP = 4
-    FRANSK = 5
-    GOLDEN = 6
-    JAPP = 7
-    NOTTI = 8
+    Cocos = 1
+    Daim = 2
+    Karamell = 3
+    Crisp = 4
+    Fransk = 5
+    Golden = 6
+    Japp = 7
+    Notti = 8
+    Eclairs = 9
+    Toffee = 10
+    Lakris = 11
+    Banan = 12
 
 # --- ROS Node ---
 '''
