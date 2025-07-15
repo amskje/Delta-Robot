@@ -1,16 +1,26 @@
-import math
-import comms
-import kinematics
+from . import comms
+from . import kinematics
 from typing import List, Tuple
+from dataclasses import dataclass
+
+@dataclass
+class ControlConfig:
+    # Base parameters
+    WAYPOINTS: int = 5 # Minimum 2
+    INITIAL_POSITION: List[float] = kinematics.Position(3.373, 0.184, 257.886)  # Initial position after goHome()
+
+def config() -> ControlConfig:
+    return ControlConfig()
 
 
 class DeltaRobotController:
-    def __init__(self, serial_comm: comms.SerialComm, max_waypoints=20):
+    def __init__(self, serial_comm: comms.SerialComm):
         self.serial = serial_comm  # Instance of SerialComm
-        self.current_pos = [0.0, 0.0, 0.0]  # Track robot position in mm
-        self.max_waypoints = max_waypoints
+        #self.current_pos = [0.0, 0.0, 0.0]  # Track robot position in mm
+        self.current_pos = [3.373, 0.184, 257.886] #Test
 
-    def _send_angles_sequence(self, angles_list):
+
+    def send_angles_sequence(self, angles_list):
         self.serial.send_message("POSITION")
         if not self.serial.wait_for_ack("READY"):
             print("[Error] Arduino not ready for POSITION.")
@@ -18,7 +28,7 @@ class DeltaRobotController:
 
         for angles in angles_list:
             a1, a2, a3 = angles
-            msg = f"ANGLES {a1:.2f},{a2:.2f},{a3:.2f}"
+            msg = f"ANGLES {int(a1)}, {int(a2)}, {int(a3)}"
             self.serial.send_message(msg)
 
         self.serial.send_message("GO")
@@ -38,12 +48,15 @@ class DeltaRobotController:
         """
         print(f"[Control] Planning move to pickup at {target_pos}...")
 
+        waypoints = config().WAYPOINTS
+
         # === Phase 1: Plan path to pickup
         pickup_angles = []
-        kinematics.plan_linear_move(self.current_pos[0], self.current_pos[1], self.current_pos[2],
-                                    target_pos[0], target_pos[1], target_pos[2], pickup_angles)
+         
+        kinematics.plan_linear_move(self.current_pos[0]*10, self.current_pos[1]*10, self.current_pos[2],
+                                    target_pos[0]*10, target_pos[1]*10, target_pos[2], pickup_angles, waypoints=waypoints)
 
-        if not self._send_angles_sequence(pickup_angles):
+        if not self.send_angles_sequence(pickup_angles):
             return False
 
         # === Pickup operation
@@ -63,10 +76,10 @@ class DeltaRobotController:
             *target_pos,
             *dropoff_pos,
             dropoff_angles,
-            waypoints=self.max_waypoints
+            waypoints=config().WAYPOINTS
         )
 
-        if not self._send_angles_sequence(dropoff_angles):
+        if not self.send_angles_sequence(dropoff_angles):
             return False
 
         # === Release

@@ -1,19 +1,35 @@
 import math
 from typing import List, Tuple
+from dataclasses import dataclass
 
-# Constants
-tan30 = math.tan(math.radians(30))
-r_base = 70.0
-r_end = 24.0
-l_biceps = 147.0
-l_forearm = 250.0
-pulses_per_rev = 80000
+@dataclass
+class KinematicsConfig:
+    # Base geometry [mm]
+    r_base: float = 70.0
+    r_end: float = 24.0
+    l_biceps: float = 147.0
+    l_forearm: float = 250.0
 
-ZERO_ANGLE1 = 408*360 / pulses_per_rev
-ZERO_ANGLE2 = 391*360 / pulses_per_rev
-ZERO_ANGLE3 = 422*360 / pulses_per_rev
+    # Stepper settings
+    pulses_per_rev: int = 80000
 
-MAX_waypoints = 10
+    # Motion planning
+    MAX_waypoints: int = 5
+
+    # Derived/calculated constants
+    tan30: float = None
+    ZERO_ANGLE1: float = None
+    ZERO_ANGLE2: float = None
+    ZERO_ANGLE3: float = None
+
+    def __post_init__(self):
+        self.tan30 = math.tan(math.radians(30))
+        self.ZERO_ANGLE1 = 408 * 360 / self.pulses_per_rev
+        self.ZERO_ANGLE2 = 391 * 360 / self.pulses_per_rev
+        self.ZERO_ANGLE3 = 422 * 360 / self.pulses_per_rev
+
+def config() -> KinematicsConfig:
+    return KinematicsConfig()
 
 path_points = []
 path_angles = []
@@ -29,13 +45,14 @@ class Position:
 def single_arm_ik(x0, y0, z0):
     """Computes the angle for one arm given x, y, z.
     Returns (success, thetaDeg)"""
-    y1 = -0.5 * tan30 * r_base
-    y0 -= 0.5 * tan30 * r_end
+    y1 = -0.5 * config().tan30 * config().r_base
+    y0 -= 0.5 * config().tan30 * config().r_end
 
-    a = (x0**2 + y0**2 + z0**2 + l_biceps**2 - l_forearm**2 - y1**2) / (2.0 * z0)
+
+    a = (x0**2 + y0**2 + z0**2 + config().l_biceps**2 - config().l_forearm**2 - y1**2) / (2.0 * z0)
     b = (y1 - y0) / z0
 
-    d = -(a + b * y1)**2 + l_biceps * (b**2 * l_biceps + l_biceps)
+    d = -(a + b * y1)**2 + config().l_biceps * (b**2 * config().l_biceps + config().l_biceps)
 
     if d < 0:
         print(f"  → FAIL: d={d:.2f} < 0 → unreachable")
@@ -58,17 +75,17 @@ def inverse_kinematics(x, y, z):
     If any arm fails, it returns 0.0 for that angle."""
     # Arm 1
     ok1, t1 = single_arm_ik(x, y, z)
-    theta1 = t1 - ZERO_ANGLE1 if ok1 else 0.0
+    theta1 = t1 - config().ZERO_ANGLE1 if ok1 else 0.0
 
     # Arm 2
     xr2, yr2 = rotate_xy(x, y, 2.0 * math.pi / 3.0)
     ok2, t2 = single_arm_ik(xr2, yr2, z)
-    theta2 = t2 - ZERO_ANGLE2 if ok2 else 0.0
+    theta2 = t2 - config().ZERO_ANGLE2 if ok2 else 0.0
 
     # Arm 3
     xr3, yr3 = rotate_xy(x, y, -2.0 * math.pi / 3.0)
     ok3, t3 = single_arm_ik(xr3, yr3, z)
-    theta3 = t3 - ZERO_ANGLE3 if ok3 else 0.0
+    theta3 = t3 - config().ZERO_ANGLE3 if ok3 else 0.0
 
     if not ok1: print("  → Arm 1 failed")
     if not ok2: print("  → Arm 2 failed")
@@ -80,7 +97,7 @@ def plan_linear_move(
     x0: float, y0: float, z0: float,
     x1: float, y1: float, z1: float,
     angles_list: List[Tuple[int, int, int]],
-    waypoints: int = MAX_waypoints
+    waypoints: int
     ):
     """
     Generate linear path from (x0, y0, z0) to (x1, y1, z1), compute IK for each step,
@@ -90,10 +107,8 @@ def plan_linear_move(
         x0, y0, z0: Start coordinates
         x1, y1, z1: End coordinates
         angles_list: List to be filled with IK angle tuples
-        waypoints: Number of linear interpolation steps (default 100)
+        waypoints: Number of linear interpolation steps
     """
-    if waypoints > MAX_waypoints:
-        waypoints = MAX_waypoints
 
     angles_list.clear()  # Ensure the list is empty before filling
 
@@ -102,7 +117,7 @@ def plan_linear_move(
         x = x0 + t * (x1 - x0)
         y = y0 + t * (y1 - y0)
         z = z0 + t * (z1 - z0)
-
+        print(f"[Debug]: Waypoints: x{i}: {x}, y{i}: {y}, z{i}: {z}")
         theta1, theta2, theta3 = inverse_kinematics(x, y, z)
 
         # Skip if any angle is clearly invalid (0.0 used as error signal)
@@ -110,7 +125,7 @@ def plan_linear_move(
             continue
 
         angles_list.append((
-            round(theta1 * pulses_per_rev / 360),
-            round(theta2 * pulses_per_rev / 360),
-            round(theta3 * pulses_per_rev / 360)
+            round(theta1 * config().pulses_per_rev / 360),
+            round(theta2 * config().pulses_per_rev / 360),
+            round(theta3 * config().pulses_per_rev / 360)
         ))
