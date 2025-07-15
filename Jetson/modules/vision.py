@@ -1,6 +1,8 @@
 import cv2
 from ultralytics import YOLO
 from dataclasses import dataclass
+import os
+import time
 
 @dataclass
 class VisionConfig:
@@ -144,14 +146,26 @@ def video_loop(cap, stop_event):
     cv2.namedWindow("🍬 YOLOv8 Live Detection", cv2.WINDOW_NORMAL)
     cv2.resizeWindow("🍬 YOLOv8 Live Detection", config().FRAME_WIDTH, config().FRAME_HEIGHT)
 
+    # Setup for frame saving
+    save_dir = "/home/jetson/yolo_frames"  # You can change this path
+    os.makedirs(save_dir, exist_ok=True)
+    last_saved_time = 0
+
     while not stop_event.is_set():
         ret, frame = cap.read()
         if not ret:
             print("⚠️ Failed to read frame.")
             continue
 
-        draw_overlay(frame)
         cv2.imshow("🍬 YOLOv8 Live Detection", frame)
+
+        # Save one frame every two seconds
+        current_time = time.time()
+        if current_time - last_saved_time >= 2.0:
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            frame_path = os.path.join(save_dir, f"frame_{timestamp}.jpg")
+            cv2.imwrite(frame_path, frame)
+            last_saved_time = current_time
 
         # Handle 'q' key press in video window
         if cv2.waitKey(1) & 0xFF == ord('q'):
