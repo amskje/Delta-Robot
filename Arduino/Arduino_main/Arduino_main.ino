@@ -246,7 +246,17 @@ void readSerialMessage() {
     }
     else if (inputBuffer == "GO" && currentState == IDLE) {
       current_index = 0;
-      currentState = RUNNING;
+
+      //test
+      if (waypoint_count > 0) {
+        moveToPosition(current_index++);  // Start first move immediately
+        currentState = RUNNING;
+      } else {
+        Serial.println("[Arduino] ⚠️ GO command received with 0 waypoints");
+  }
+
+      //test
+      //currentState = RUNNING;
     }
     else if (inputBuffer == "ABORT") {
       abortRequested = true;
