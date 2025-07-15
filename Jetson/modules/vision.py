@@ -147,8 +147,7 @@ def video_loop(cap, stop_event):
     cv2.resizeWindow("🍬 YOLOv8 Live Detection", config().FRAME_WIDTH, config().FRAME_HEIGHT)
 
     # Setup for frame saving
-    save_dir = "/home/jetson/yolo_frames"  # You can change this path
-    os.makedirs(save_dir, exist_ok=True)
+    save_dir = "/home/Documents/code/Delta-Robot/Jetson/yolo_frames"  # You can change this path
     last_saved_time = 0
 
     while not stop_event.is_set():
@@ -164,6 +163,7 @@ def video_loop(cap, stop_event):
         if current_time - last_saved_time >= 2.0:
             timestamp = time.strftime("%Y%m%d_%H%M%S")
             frame_path = os.path.join(save_dir, f"frame_{timestamp}.jpg")
+            print("Image saved")
             cv2.imwrite(frame_path, frame)
             last_saved_time = current_time
 
