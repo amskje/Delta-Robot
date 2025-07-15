@@ -9,7 +9,7 @@ class CommunicationsConfig:
     ROS_TOPIC: str = 'PI_command'
     SERIAL_PORT: str = '/dev/ttyACM0'
     BAUD_RATE: int = 57600 # Check if matches with Arduino
-    ACK_TIMEOUT: int = 5  # Seconds
+    ACK_TIMEOUT: int = 20  # Seconds
 
 def config() -> CommunicationsConfig:
     return CommunicationsConfig()

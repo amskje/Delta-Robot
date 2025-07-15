@@ -110,8 +110,6 @@ def plan_linear_move(
         waypoints: Number of linear interpolation steps
     """
 
-    print(f"Planning path from ( {x0}, {y0}, {z0}) to ( {x1}, {y1}, {z1}) with ({waypoints} waypoints)")
-
     angles_list.clear()  # Ensure the list is empty before filling
 
     for i in range(waypoints):
@@ -119,7 +117,7 @@ def plan_linear_move(
         x = x0 + t * (x1 - x0)
         y = y0 + t * (y1 - y0)
         z = z0 + t * (z1 - z0)
-        print(f"x{i}: {x}, y{i}: {y}, z{i}: {z}, t: {t}, waypoints: {waypoints}")
+        print(f"[Debug]: Waypoints: x{i}: {x}, y{i}: {y}, z{i}: {z}")
         theta1, theta2, theta3 = inverse_kinematics(x, y, z)
 
         # Skip if any angle is clearly invalid (0.0 used as error signal)

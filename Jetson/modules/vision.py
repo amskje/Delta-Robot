@@ -68,7 +68,7 @@ def detect_target(model, target_class):
 
 
     #Test
-    for _ in range(20):
+    for _ in range(40):
         ret, _ = cap.read()
     #Test
 
@@ -87,7 +87,6 @@ def detect_target(model, target_class):
         class_name = class_names[class_id]
         conf = float(box.conf[0].item())
 
-        print(f"Detected: {class_name}, target: {target_class}")
         if class_name != target_class:
             print("Mismatch class name")
             continue

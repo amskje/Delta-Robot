@@ -6,7 +6,7 @@ from dataclasses import dataclass
 @dataclass
 class ControlConfig:
     # Base parameters
-    WAYPOINTS: int = 2 # Minimum 2
+    WAYPOINTS: int = 5 # Minimum 2
     INITIAL_POSITION: List[float] = kinematics.Position(3.373, 0.184, 257.886)  # Initial position after goHome()
 
 def config() -> ControlConfig:
@@ -16,7 +16,9 @@ def config() -> ControlConfig:
 class DeltaRobotController:
     def __init__(self, serial_comm: comms.SerialComm):
         self.serial = serial_comm  # Instance of SerialComm
-        self.current_pos = [0.0, 0.0, 0.0]  # Track robot position in mm
+        #self.current_pos = [0.0, 0.0, 0.0]  # Track robot position in mm
+        self.current_pos = [3.373, 0.184, 257.886] #Test
+
 
     def send_angles_sequence(self, angles_list):
         self.serial.send_message("POSITION")
@@ -26,7 +28,7 @@ class DeltaRobotController:
 
         for angles in angles_list:
             a1, a2, a3 = angles
-            msg = f"ANGLES {a1:.2f},{a2:.2f},{a3:.2f}"
+            msg = f"ANGLES {int(a1)}, {int(a2)}, {int(a3)}"
             self.serial.send_message(msg)
 
         self.serial.send_message("GO")
@@ -51,9 +53,8 @@ class DeltaRobotController:
         # === Phase 1: Plan path to pickup
         pickup_angles = []
          
-        print(f"current Pos: ({self.current_pos[0]}, {self.current_pos[1]}, {self.current_pos[2]}), target pos: ({target_pos[0]}, {target_pos[1]}, {target_pos[2]})")
-        kinematics.plan_linear_move(self.current_pos[0], self.current_pos[1], self.current_pos[2],
-                                    target_pos[0], target_pos[1], target_pos[2], pickup_angles, waypoints=waypoints)
+        kinematics.plan_linear_move(self.current_pos[0]*10, self.current_pos[1]*10, self.current_pos[2],
+                                    target_pos[0]*10, target_pos[1]*10, target_pos[2], pickup_angles, waypoints=waypoints)
 
         if not self.send_angles_sequence(pickup_angles):
             return False
