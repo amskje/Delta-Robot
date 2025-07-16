@@ -180,7 +180,7 @@ class AutomaticScreen(tk.Frame):
                 # --- Manual shrink for oversized image ---
                 if twist == Twist.Notti:
                     width, height = img.size
-                    img = img.resize((int(width * 0.8), int(height * 0.8)), Image.Resampling.LANCZOS)
+                    img = img.resize((int(width * 0.6), int(height * 0.6)), Image.Resampling.LANCZOS)
                 img = Image.open(image_path)
                 img.thumbnail((100, 100), Image.Resampling.LANCZOS)
                 photo = ImageTk.PhotoImage(img)
