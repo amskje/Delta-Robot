@@ -3,7 +3,7 @@ Description=Start Delta Robot GUI in Docker
 After=graphical-session.target
 
 [Service]
-ExecStart=/home/pi/start-delta-gui.sh
+ExecStart=/home/delta/start-delta-gui.sh
 Restart=on-failure
 
 [Install]
