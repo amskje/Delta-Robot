@@ -177,17 +177,11 @@ class AutomaticScreen(tk.Frame):
         for i, twist in enumerate(Twist):
             try:
                 image_path = f"pictures/twist/{twist.name.lower()}.png"
-                print(f"Loading: {image_path}")
-
-                # Open and scale image proportionally
                 img = Image.open(image_path)
-                img = img.copy()  # Ensure we don't modify original cache
                 img.thumbnail((100, 100), Image.ANTIALIAS)
+                photo = ImageTk.PhotoImage(img)
+                self.images.append(photo)
 
-                photo = ImageTk.PhotoImage(img)  # Create Tk-compatible image
-                self.images.append(photo)        # Prevent GC
-
-                # Create button with image
                 btn = tk.Button(
                     button_frame,
                     image=photo,
@@ -198,12 +192,11 @@ class AutomaticScreen(tk.Frame):
                     relief='flat',
                     activebackground='black'
                 )
-                btn.image = photo  # Also prevent GC by attaching to widget
+                btn.image = photo  # Prevent garbage collection
                 btn.grid(row=i // 6, column=i % 6, padx=10, pady=10)
 
             except Exception as e:
                 print(f"Failed to load {twist.name}: {e}")
-
 
         # Now that geometry is calculated, center the button_frame with place
         button_frame.update_idletasks()
