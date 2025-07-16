@@ -168,12 +168,17 @@ class AutomaticScreen(tk.Frame):
         image_files = [f"pictures/twist/{tw.name.lower()}.png" for tw in Twist]
 
         for i, twist in enumerate(Twist):
-            img = Image.open(image_files[i]).resize((100, 100))
-            photo = ImageTk.PhotoImage(img)
-            self.images.append(photo)
+            try:
+                image_path = f"pictures/twist/{twist.name.lower()}.png"
+                print(f"Loading: {image_path}")
+                img = Image.open(image_path).resize((100, 100))
+                photo = ImageTk.PhotoImage(img)
+                self.images.append(photo)  # Prevent garbage collection
+                btn = tk.Button(button_frame, image=photo, command=lambda t=twist: self.on_button_click(t))
+                btn.grid(row=i // 4, column=i % 4, padx=10, pady=10)
+            except Exception as e:
+                print(f"Failed to load {twist.name}: {e}")
 
-            btn = tk.Button(button_frame, image=photo, command=lambda t=twist: self.on_button_click(t))
-            btn.grid(row=i // 4, column=i % 4, padx=10, pady=10)
 
         tk.Button(self, text="Tilbake", font=("Arial", 14),
                   command=lambda: controller.show_frame(StartScreen)).pack(pady=20)
