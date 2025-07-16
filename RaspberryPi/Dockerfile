@@ -1,7 +1,13 @@
 FROM arm64v8/ros:humble
 
+ENV ROS_VERSION=2
+ENV ROS_DISTRO=humble
+ENV ROS_LOCALHOST_ONLY=0
+ENV RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+ENV DISPLAY=:0
+
 #Install pip and system packages
-RUN apt update && apt install -y \
+RUN apt-get update && apt-get install -y \
 	python3-pip \
 	python3-tk \
 	&& rm -rf /var/lib/apt/lists/*
@@ -12,10 +18,7 @@ RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
 #Set working directory inside the container
 WORKDIR /home/dev/Delta-Robot
-COPY RaspberryPi /home/dev/Delta-Robot/
-
-# Set Display environment
-ENV DISPLAY=:0
+COPY . /home/dev/Delta-Robot/
 
 #Default command
 #CMD ["bash"]
