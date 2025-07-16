@@ -145,8 +145,10 @@ class AutomaticScreen(tk.Frame):
         tk.Label(self, text="Velg din Twist:", font=("Arial", 18), fg="white", bg="black").pack(pady=(20, 10))
 
         # Container frame for the twist grid
-        grid_container = tk.Frame(self, bg="black")
-        grid_container.pack(fill="both", padx=40, pady=(0, 30))
+        grid_container = tk.Frame(self, bg="black", height=500)
+        grid_container.pack(padx=40, pady=(0, 20))
+        grid_container.pack_propagate(False)
+
 
 
         # Create 4 columns and 3 rows that expand equally
