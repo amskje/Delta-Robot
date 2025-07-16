@@ -1,42 +1,28 @@
 import tkinter as tk
-from PIL import Image, ImageTk, ImageOps
+from PIL import Image, ImageTk
 from enum import Enum
 from tkinter import messagebox
-
- 
 
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 import threading
 
-
-
-# gjøre bakgrunn til kanpp liks som bakrunn, legge dette til i tk.Button: bg='black', fg='red', borderwidth=0, highlightthickness=0, relief='flat'
-
-# Universell button style
+# --- Global Style ---
 button_style = {
-    "bg": "#cc0000",                 # Permanent red background
-    "fg": "white",                   # White text
+    "bg": "#cc0000",                 # Red
+    "fg": "white",
     "activebackground": "#990000",  # Darker red on press
-    "activeforeground": "white",    # Still white text when active
+    "activeforeground": "white",
     "borderwidth": 0,
     "highlightthickness": 0,
     "relief": "flat",
     "font": ("Arial", 16)
 }
 
-
-
-
-
-# --- Global Variables ---
-
 send_message = True
 
- 
 # --- Twist Enum ---
-
 class Twist(Enum):
     Cocos = 1
     Daim = 2
@@ -50,16 +36,12 @@ class Twist(Enum):
     Toffee = 10
     Lakris = 11
     Banan = 12
-    
+
 # --- ROS Node ---
-
 class TwistPublisher(Node):
-
     def __init__(self):
         super().__init__('twist_publisher')
         self.publisher_ = self.create_publisher(String, 'PI_command', 10)
-
- 
 
     def send_twist(self, twist_name: str):
         msg = String()
@@ -67,12 +49,8 @@ class TwistPublisher(Node):
         self.publisher_.publish(msg)
         self.get_logger().info(f"Sent twist: {msg.data}")
 
- 
-
-# --- App Class ---
-
+# --- App ---
 class App(tk.Tk):
-
     def __init__(self):
         super().__init__()
         self.title("Delta Robot GUI")
@@ -96,19 +74,14 @@ class App(tk.Tk):
         frame = self.frames[screen_class]
         frame.tkraise()
 
- 
-
 # --- Start Screen ---
-
 class StartScreen(tk.Frame):
-
     def __init__(self, parent, controller):
         super().__init__(parent, bg="black")
         self.controller = controller
 
         logo_img = Image.open("pictures/logo.png").resize((300, 150))
         self.logo_photo = ImageTk.PhotoImage(logo_img)
-
         tk.Label(self, image=self.logo_photo, bg="black").pack(pady=30)
 
         tk.Label(self, text="Velg modus:", font=("Arial", 20), fg="white", bg="black").pack(pady=10)
@@ -116,21 +89,20 @@ class StartScreen(tk.Frame):
         button_frame = tk.Frame(self, bg="black")
         button_frame.pack()
 
-        tk.Button(button_frame, text="Manuell Modus", font=("Arial", 16), width=20, height=2, bg='black', fg='red', borderwidth=0, highlightthickness=0, relief='flat',
-                  command=lambda: controller.show_frame(ManualScreen)).grid(row=0, column=0, padx=10, pady=10)
+        tk.Button(button_frame, text="Manuell Modus",
+                  command=lambda: controller.show_frame(ManualScreen),
+                  **button_style).grid(row=0, column=0, padx=10, pady=10)
 
-        tk.Button(button_frame, text="Automatisk Modus", font=("Arial", 16), width=20, height=2,
-                  command=lambda: controller.show_frame(AutomaticScreen)).grid(row=0, column=1, padx=10, pady=10)
+        tk.Button(button_frame, text="Automatisk Modus",
+                  command=lambda: controller.show_frame(AutomaticScreen),
+                  **button_style).grid(row=0, column=1, padx=10, pady=10)
 
-        tk.Button(button_frame, text="Test Modus", font=("Arial", 16), width=20, height=2,
-                  command=lambda: controller.show_frame(TestScreen)).grid(row=0, column=2, padx=10, pady=10)
-
- 
+        tk.Button(button_frame, text="Test Modus",
+                  command=lambda: controller.show_frame(TestScreen),
+                  **button_style).grid(row=0, column=2, padx=10, pady=10)
 
 # --- Manual Screen ---
-
 class ManualScreen(tk.Frame):
-
     def __init__(self, parent, controller):
         super().__init__(parent, bg="black")
         self.controller = controller
@@ -140,49 +112,42 @@ class ManualScreen(tk.Frame):
 
         tk.Label(center, text="Manuell kontroll", font=("Arial", 20), fg="white", bg="black").grid(row=0, column=1, pady=20)
 
-        tk.Button(center, text="↑", font=("Arial", 24), width=5, bg="red", fg="white",
-                  command=lambda: self.move("Up")).grid(row=1, column=1, pady=5)
+        tk.Button(center, text="↑", width=5,
+                  command=lambda: self.move("Up"),
+                  **button_style).grid(row=1, column=1, pady=5)
 
-        tk.Button(center, text="←", font=("Arial", 24), width=5, bg="red", fg="white",
-                  command=lambda: self.move("Left")).grid(row=2, column=0, padx=5)
+        tk.Button(center, text="←", width=5,
+                  command=lambda: self.move("Left"),
+                  **button_style).grid(row=2, column=0, padx=5)
 
-        tk.Button(center, text="↓", font=("Arial", 24), width=5, bg="red", fg="white",
-                  command=lambda: self.move("Down")).grid(row=2, column=1, pady=5)
+        tk.Button(center, text="↓", width=5,
+                  command=lambda: self.move("Down"),
+                  **button_style).grid(row=2, column=1, pady=5)
 
-        tk.Button(center, text="→", font=("Arial", 24), width=5, bg="red", fg="white",
-                  command=lambda: self.move("Right")).grid(row=2, column=2, padx=5)
+        tk.Button(center, text="→", width=5,
+                  command=lambda: self.move("Right"),
+                  **button_style).grid(row=2, column=2, padx=5)
 
-        tk.Button(center, text="Tilbake", font=("Arial", 14),
-                  command=lambda: controller.show_frame(StartScreen)).grid(row=3, column=1, pady=20)
+        tk.Button(center, text="Tilbake",
+                  command=lambda: controller.show_frame(StartScreen),
+                  **button_style).grid(row=3, column=1, pady=20)
 
     def move(self, direction):
         print("Robot moves", direction)
 
- 
-
 # --- Automatic Screen ---
-
 class AutomaticScreen(tk.Frame):
-
     def __init__(self, parent, controller):
         super().__init__(parent, bg="black")
         self.controller = controller
 
-        tk.Label(
-            self,
-            text="Velg din Twist:",
-            font=("Arial", 18),
-            fg="white",
-            bg="black"
-        ).pack(pady=20)
+        tk.Label(self, text="Velg din Twist:", font=("Arial", 18), fg="white", bg="black").pack(pady=20)
 
-        # Container that fills the screen and centers content
         container_frame = tk.Frame(self, bg="black")
         container_frame.pack(expand=True, fill="both")
 
-        # Frame to hold buttons, centered horizontally
         button_frame = tk.Frame(container_frame, bg="black")
-        button_frame.pack()  # Temporary layout to ensure geometry is calculated
+        button_frame.pack()
 
         self.images = []
 
@@ -190,53 +155,38 @@ class AutomaticScreen(tk.Frame):
             try:
                 image_path = f"pictures/twist/{twist.name.lower()}.png"
                 img = Image.open(image_path)
-                # Shrink Notti fordi den er svær
                 if twist == Twist.Notti:
                     img.thumbnail((60, 60), Image.Resampling.LANCZOS)
                 else:
                     img.thumbnail((100, 100), Image.Resampling.LANCZOS)
+
                 photo = ImageTk.PhotoImage(img)
                 self.images.append(photo)
 
-                btn = tk.Button(
-                    button_frame,
-                    image=photo,
-                    command=lambda t=twist: self.on_button_click(t),
-                    bg='black',
-                    borderwidth=0,
-                    highlightthickness=0,
-                    relief='flat',
-                    activebackground='black'
-                )
-                btn.image = photo  # Prevent garbage collection
+                btn = tk.Button(button_frame, image=photo,
+                                command=lambda t=twist: self.on_button_click(t),
+                                bg='black', borderwidth=0, highlightthickness=0,
+                                relief='flat', activebackground='black')
+                btn.image = photo
                 btn.grid(row=i // 6, column=i % 6, padx=10, pady=10)
 
             except Exception as e:
                 print(f"Failed to load {twist.name}: {e}")
 
-        # Now that geometry is calculated, center the button_frame with place
         button_frame.update_idletasks()
         button_frame.place(relx=0.5, rely=0, anchor="n")
 
-        # Back button
-        tk.Button(
-            self,
-            text="Tilbake",
-            command=lambda: controller.show_frame(StartScreen),
-            **button_style
-        ).pack(pady=20)
+        tk.Button(self, text="Tilbake",
+                  command=lambda: controller.show_frame(StartScreen),
+                  **button_style).pack(pady=20)
 
     def on_button_click(self, twist):
         if send_message:
             twist_publisher.send_twist(twist.name)
         messagebox.showinfo("Valg", f"Du valgte {twist.name}")
 
-
- 
 # --- Test Screen ---
-
 class TestScreen(tk.Frame):
-
     def __init__(self, parent, controller):
         super().__init__(parent, bg="black")
         self.controller = controller
@@ -244,7 +194,6 @@ class TestScreen(tk.Frame):
         tk.Label(self, text="Velg en twist:", font=("Arial", 18), fg="white", bg="black").place(x=300, y=30)
 
         self.images = []
-
         image_files = [f"pictures/twist/{tw.name.lower()}.png" for tw in Twist]
 
         positions = [
@@ -253,34 +202,32 @@ class TestScreen(tk.Frame):
             (50, 400), (200, 400), (350, 400), (500, 400)
         ]
 
-
         for i, twist in enumerate(Twist):
             img = Image.open(image_files[i]).resize((100, 100))
             photo = ImageTk.PhotoImage(img)
             self.images.append(photo)
 
-            btn = tk.Button(self, image=photo, command=lambda t=twist: self.on_button_click(t), bg='black', activebackground='black', borderwidth=0, highlightthickness=0, relief='flat',)
+            btn = tk.Button(self, image=photo,
+                            command=lambda t=twist: self.on_button_click(t),
+                            bg='black', activebackground='black',
+                            borderwidth=0, highlightthickness=0, relief='flat')
             btn.place(x=positions[i][0], y=positions[i][1])
+            btn.image = photo
 
         logo_img = Image.open("pictures/placeholder.jpg").resize((160, 430))
         self.logo_photo = ImageTk.PhotoImage(logo_img)
-
         tk.Label(self, image=self.logo_photo, bg="black").place(x=640, y=45)
 
-        tk.Button(self, text="Tilbake", font=("Arial", 14),
-                  command=lambda: controller.show_frame(StartScreen)).place(x=350, y=365)
+        tk.Button(self, text="Tilbake",
+                  command=lambda: controller.show_frame(StartScreen),
+                  **button_style).place(x=350, y=365)
 
     def on_button_click(self, twist):
-
         if send_message:
             twist_publisher.send_twist(twist.name)
 
- 
-
 # --- Main ---
-
 if __name__ == "__main__":
-
     if send_message:
         rclpy.init()
         twist_publisher = TwistPublisher()
