@@ -177,12 +177,12 @@ class AutomaticScreen(tk.Frame):
         for i, twist in enumerate(Twist):
             try:
                 image_path = f"pictures/twist/{twist.name.lower()}.png"
-                # --- Manual shrink for oversized image ---
-                #if twist == Twist.Notti:
-                    #width, height = img.size
-                    #img = img.resize((int(width * 0.1), int(height * 0.1)), Image.Resampling.LANCZOS)
                 img = Image.open(image_path)
-                img.thumbnail((100, 100), Image.Resampling.LANCZOS)
+                # Shrink Notti fordi den er svær
+                if twist == Twist.Notti:
+                    img.thumbnail((80, 80), Image.Resampling.LANCZOS)
+                else:
+                    img.thumbnail((100, 100), Image.Resampling.LANCZOS)
                 photo = ImageTk.PhotoImage(img)
                 self.images.append(photo)
 
