@@ -15,7 +15,7 @@ conCFG = control.config() # Configs from control module
 kinCFG = kinematics.config() # Configs from kinematics module
 visCFG = vision.config() # Configs from vision module
 
-current_position = kinematics.INITIAL_POSITION  # Initial position after goHome()
+current_position = conCFG.INITIAL_POSITION  # Initial position after goHome()
 
 def main():
     global current_position
@@ -52,8 +52,8 @@ def main():
             print(f"Planning move to ({x}, {y}, {z}) cm...")
             angles = []
             kinematics.plan_linear_move(
-                current_position.x * 10, current_position.y * 10, current_position.z * 10,
-                x * 10, y * 10, z * 10,
+                current_position.x * 10, current_position.y * 10, current_position.z,
+                x * 10, y * 10, z,
                 angles,
                 conCFG.WAYPOINTS
             )
