@@ -80,6 +80,14 @@ class StartScreen(tk.Frame):
         super().__init__(parent, bg="black")
         self.controller = controller
 
+        tk.Button(
+            self,
+            text="Exit to Desktop",
+            command=self.quit,
+            **button_style
+        ).place(x=20, y=10, anchor="nw")
+
+
         logo_img = Image.open("pictures/DRLogo.png")
         logo_img.thumbnail((400, 200), Image.Resampling.LANCZOS)
         self.logo_photo = ImageTk.PhotoImage(logo_img)
@@ -104,14 +112,16 @@ class StartScreen(tk.Frame):
 
 # --- Manual Screen ---
 class ManualScreen(tk.Frame):
+
     def __init__(self, parent, controller):
         super().__init__(parent, bg="black")
         self.controller = controller
 
+        # Text in top left corner
+        tk.Label(self, text="Manuell", font=("Helvetica", 16, "bold"), fg="#cc0000", bg="black").place(x=20, y=10)
+
         center = tk.Frame(self, bg="black")
         center.place(relx=0.5, rely=0.5, anchor="center")
-
-        tk.Label(center, text="Manuell kontroll", font=("Helvetica", 20), fg="white", bg="black").grid(row=0, column=1, pady=20)
 
         tk.Button(center, text="↑", width=5,
                   command=lambda: self.move("Up"),
@@ -123,24 +133,33 @@ class ManualScreen(tk.Frame):
 
         tk.Button(center, text="↓", width=5,
                   command=lambda: self.move("Down"),
-                  **button_style).grid(row=2, column=1, pady=5)
+                  **button_style).grid(row=3, column=1, pady=5)
 
         tk.Button(center, text="→", width=5,
                   command=lambda: self.move("Right"),
                   **button_style).grid(row=2, column=2, padx=5)
 
-        tk.Button(center, text="Tilbake",
-                  command=lambda: controller.show_frame(StartScreen),
-                  **button_style).grid(row=3, column=1, pady=20)
+        # Create a "Tilbake" button placed at the bottom of the screen
+        tk.Button(
+            self,
+            text="Tilbake",
+            command=lambda: controller.show_frame(StartScreen),
+            **button_style
+        ).place(relx=0.5, rely=0.9, anchor="center")
+
 
     def move(self, direction):
         print("Robot moves", direction)
 
 # --- Automatic Screen ---
 class AutomaticScreen(tk.Frame):
+
     def __init__(self, parent, controller):
         super().__init__(parent, bg="black")
         self.controller = controller
+
+        # Text in top left corner
+        tk.Label(self, text="Auto", font=("Helvetica", 16, "bold"), fg="#cc0000", bg="black").place(x=20, y=10)
 
         tk.Label(self, text="Velg din Twist:", font=("Arial", 18), fg="white", bg="black").pack(pady=(20, 10))
 
@@ -212,8 +231,12 @@ class AutomaticScreen(tk.Frame):
 # --- Test Screen ---
 class TestScreen(tk.Frame):
     def __init__(self, parent, controller):
+
         super().__init__(parent, bg="black")
         self.controller = controller
+
+        # Text in top left corner
+        tk.Label(self, text="Test", font=("Helvetica", 16, "bold"), fg="#cc0000", bg="black").place(x=20, y=10)
 
         tk.Label(self, text="Velg en twist:", font=("Helvetica", 18), fg="white", bg="black").place(x=300, y=30)
 

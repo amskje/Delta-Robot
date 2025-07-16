@@ -12,12 +12,13 @@ RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
 #Set working directory inside the container
 WORKDIR /home/dev/Delta-Robot
+COPY RaspberryPi /home/dev/Delta-Robot/
 
-
-
+# Set Display environment
+ENV DISPLAY=:0
 
 #Default command
-CMD ["bash"]
+#CMD ["bash"]
 
 #This is how to run the python script direclty
-#CMD ["python3", "gui_script.py"]
+CMD ["python3", "GUIMultiplePages.py"]

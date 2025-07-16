@@ -22,7 +22,7 @@ kjør i docker:
 export ROS_DOMAIN_ID=0
 export ROS_NAMESPACE=""
 export ROS_VERSION=2
-export ROS_DISTRO=FOXY
+export ROS_DISTRO=HUMBLE
 export ROS_LOCALHOST_ONLY=0
 export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
 export ROS_IP=192.168.1.10
