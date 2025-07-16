@@ -166,9 +166,9 @@ class AutomaticScreen(tk.Frame):
 
                 # Larger image size
                 if twist == Twist.Notti:
-                    img.thumbnail((120, 120), Image.Resampling.LANCZOS)
+                    img.thumbnail((110, 110), Image.Resampling.LANCZOS)
                 else:
-                    img.thumbnail((150, 150), Image.Resampling.LANCZOS)
+                    img.thumbnail((130, 130), Image.Resampling.LANCZOS)
 
                 photo = ImageTk.PhotoImage(img)
                 self.images.append(photo)
