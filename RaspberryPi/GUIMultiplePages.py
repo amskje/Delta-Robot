@@ -80,6 +80,14 @@ class StartScreen(tk.Frame):
         super().__init__(parent, bg="black")
         self.controller = controller
 
+        tk.Button(
+            self,
+            text="Exit to Desktop",
+            command=self.quit,
+            **button_style
+        ).place(x=20, y=10, anchor="nw")
+
+
         logo_img = Image.open("pictures/DRLogo.png")
         logo_img.thumbnail((400, 200), Image.Resampling.LANCZOS)
         self.logo_photo = ImageTk.PhotoImage(logo_img)
