@@ -178,7 +178,11 @@ class AutomaticScreen(tk.Frame):
             try:
                 image_path = f"pictures/twist/{twist.name.lower()}.png"
                 img = Image.open(image_path)
-                img.thumbnail((100, 100), Image.Resampling.LANCZOS)
+                # Shrink Notti fordi den er svær
+                if twist == Twist.Notti:
+                    img.thumbnail((60, 60), Image.Resampling.LANCZOS)
+                else:
+                    img.thumbnail((100, 100), Image.Resampling.LANCZOS)
                 photo = ImageTk.PhotoImage(img)
                 self.images.append(photo)
 

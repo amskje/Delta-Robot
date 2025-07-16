@@ -12,8 +12,18 @@ import threading
 
 
 
-#gjøre bakgrunn til kanpp liks som bakrunn, legge dette til i tk.Button: bg='black', fg='red', borderwidth=0, highlightthickness=0, relief='flat'
+# gjøre bakgrunn til kanpp liks som bakrunn, legge dette til i tk.Button: bg='black', fg='red', borderwidth=0, highlightthickness=0, relief='flat'
 
+button_style = {
+    "bg": "black",
+    "fg": "white",
+    "activebackground": "red",
+    "activeforeground": "white",
+    "borderwidth": 0,
+    "highlightthickness": 0,
+    "relief": "flat",
+    "font": ("Arial", 16)
+}
 
 
 
@@ -208,10 +218,10 @@ class AutomaticScreen(tk.Frame):
 
         # Back button
         tk.Button(
-            self,
+            parent,
             text="Tilbake",
-            font=("Arial", 14),
-            command=lambda: controller.show_frame(StartScreen)
+            command=lambda: controller.show_frame(StartScreen),
+            **button_style
         ).pack(pady=20)
 
     def on_button_click(self, twist):
