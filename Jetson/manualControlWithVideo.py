@@ -74,8 +74,8 @@ def main():
 
             angles = []
             kinematics.plan_linear_move(
-                current_position.x * 10, current_position.y * 10, current_position.z * 10,
-                x * 10, y * 10, z * 10,
+                current_position.x * 10, current_position.y * 10, current_position.z ,
+                x * 10, y * 10, z,
                 angles,
                 conCFG.WAYPOINTS
             )

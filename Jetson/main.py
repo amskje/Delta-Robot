@@ -7,6 +7,12 @@ import modules.comms as comms
 import modules.control as control
 import modules.kinematics as kinematics
 
+#Teset, for middlertidig keyboard knapp d
+import sys
+import select
+#Teset, for middlertidig keyboard knapp d
+
+
 class RobotState(Enum):
     IDLE = auto()
     DELIVERING = auto()
@@ -38,6 +44,22 @@ def main():
 
         if state == RobotState.IDLE:
             log("Robot is idle. Waiting for commands...")
+
+            #Teset, for middlertidig keyboard knapp d
+
+            # Check for 'd' key to simulate "daim" message
+            if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
+                key = sys.stdin.readline().strip()
+                if key.lower() == 'd':
+                    log("Keyboard input 'd' detected. Simulating 'daim' message.")
+                    order = 'Daim'
+                    state = RobotState.DELIVERING
+                    continue
+
+            #Teset, for middlertidig keyboard knapp d
+            
+
+
             msg = ROS.get_latest_message()
             if msg in vision.class_names:
                 order = msg

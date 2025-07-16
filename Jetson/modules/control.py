@@ -7,6 +7,7 @@ from dataclasses import dataclass
 class ControlConfig:
     # Base parameters
     WAYPOINTS: int = 5 # Minimum 2
+    WAYPOINTS_DOWN : int = 5 #Minimum 2
     INITIAL_POSITION: List[float] = kinematics.Position(3.373, 0.184, 257.886)  # Initial position after goHome()
 
 def config() -> ControlConfig:
@@ -63,6 +64,7 @@ class DeltaRobotController:
         print(f"[Control] Planning move to pickup at {target_pos}...")
 
         waypoints = config().WAYPOINTS
+        waypoints_down = config().WAYPOINTS_DOWN
 
         # === Phase 1: Plan path to pickup
         pickup_angles = []
@@ -74,7 +76,7 @@ class DeltaRobotController:
         #Pre calculated steps for moving down if twist is not picked up, maby change the number 25
         #kan kanskje sende den 6 cm ned, også i arduino code ta å bruke 1/3 av way punktene av gangen
         kinematics.plan_linear_move(target_pos[0]*10, target_pos[1]*10, target_pos[2],
-                                    target_pos[0]*10, target_pos[1]*10, target_pos[2]+5, down_angles, waypoints=waypoints)
+                                    target_pos[0]*10, target_pos[1]*10, target_pos[2]+40, down_angles, waypoints=waypoints_down)
 
 
         #Her får man done for arduino hvis den har plukket opp twsiten
@@ -90,11 +92,12 @@ class DeltaRobotController:
          #   print("[Error] Pickup not acknowledged.")
          #   return False
         
-        self.current_pos = list(target_pos)
-
+        self.current_pos = list(target_pos) #husk, må gjøre slik at etter roboten har plukket opp må den vite akkuret hvor langt ned den har gått
+        """
         print(f"[Control] Planning move to drop-off at {dropoff_pos}...")
 
         # === Phase 2: Plan path to drop-off
+        
         dropoff_angles = []
         kinematics.plan_linear_move(
             *target_pos,
@@ -107,7 +110,7 @@ class DeltaRobotController:
             return False
         
 
-
+        """
     
         #skru av pumpe på arduino når ferdig plasert
         # === Release
