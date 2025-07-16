@@ -161,7 +161,7 @@ class AutomaticScreen(tk.Frame):
         tk.Label(self, text="Velg din Twist:", font=("Arial", 18), fg="white", bg="black").pack(pady=20)
 
         button_frame = tk.Frame(self, bg="black")
-        button_frame.pack()
+        button_frame.pack(expand=True, fill="both")
 
         self.images = []
 
