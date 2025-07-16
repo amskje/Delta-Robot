@@ -327,6 +327,25 @@ void goHome() {
 
 }
 
+
+void clearWaypoints() {
+  waypoint_count = 0;
+  current_index = 0;
+  pickdown_count = 0;
+  current_index_down = 0;
+
+  for (int i = 0; i < MAX_WAYPOINTS; i++) {
+    positions[i][0] = 0;
+    positions[i][1] = 0;
+    positions[i][2] = 0;
+
+    pickdown_positions[i][0] = 0;
+    pickdown_positions[i][1] = 0;
+    pickdown_positions[i][2] = 0;
+  }
+}
+
+
 void setup() {
 
   Serial.begin(57600);
@@ -360,29 +379,17 @@ void loop() {
   switch (currentState) {
   case IDLE:
 
-    if (reset == true){
-      reset == false;
-      waypoint_count = 0;
-      current_index = 0;
-      pickdown_count = 0;
-      current_index_down = 0;
-
-      for (int i = 0; i < MAX_WAYPOINTS; i++) {
-        positions[i][0] = 0;
-        positions[i][1] = 0;
-        positions[i][2] = 0;
-
-        pickdown_positions[i][0] = 0;
-        pickdown_positions[i][1] = 0;
-        pickdown_positions[i][2] = 0;
-      }
-    
+    if (reset) {
+      reset = false;
+      clearWaypoints();
+    }
 
     break;
 
   case RUNNING:
     if (abortRequested) {
       stopAllMotors();
+      reset = true;
       currentState = IDLE;
       abortRequested = false;
       goHome3();
@@ -401,13 +408,11 @@ void loop() {
     } 
     else if ((current_index_down < pickdown_count) && (current_index >= waypoint_count)) {
       digitalWrite(PUMP, HIGH);
-      Serial.println("[Arduino] 1");
 
       if (checkSensor()){
         current_index_down = pickdown_count;
         Serial.println("PICKED_UP");
       } else {
-          Serial.println("[Arduino] 2");
 
           moveToPosition(current_index_down, pickdown_positions);
           current_index_down++;
@@ -422,14 +427,16 @@ void loop() {
           }
       }
     }
-    else if (!motorsRunning() && currentState == RUNNING) {
+    //else if (!motorsRunning() && currentState == RUNNING) {
+    else {
       Serial.println("DONE");
       reset = true;
       currentState = IDLE;
     }
-    }
-
     break;
+
+    
+
 
   }
 }
