@@ -81,14 +81,14 @@ class StartScreen(tk.Frame):
         self.controller = controller
 
         logo_img = Image.open("pictures/DRLogo.png")
-        logo_img.thumbnail((300, 150), Image.Resampling.LANCZOS)
+        logo_img.thumbnail((400, 200), Image.Resampling.LANCZOS)
         self.logo_photo = ImageTk.PhotoImage(logo_img)
-        tk.Label(self, image=self.logo_photo, bg="black").pack(pady=30)
+        tk.Label(self, image=self.logo_photo, bg="black").pack(pady=(60, 40))
 
         tk.Label(self, text="Velg modus:", font=("Helvetica", 20), fg="white", bg="black").pack(pady=10)
 
         button_frame = tk.Frame(self, bg="black")
-        button_frame.pack()
+        button_frame.pack(pady=(0, 40))
 
         tk.Button(button_frame, text="Manuell",
                   command=lambda: controller.show_frame(ManualScreen),
