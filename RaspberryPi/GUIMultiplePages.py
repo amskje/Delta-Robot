@@ -96,7 +96,7 @@ class StartScreen(tk.Frame):
         super().__init__(parent, bg="black")
         self.controller = controller
 
-        logo_img = Image.open("twist_bilder/image.png").resize((300, 150))
+        logo_img = Image.open("twist-bilder/logo.png").resize((300, 150))
         self.logo_photo = ImageTk.PhotoImage(logo_img)
 
         tk.Label(self, image=self.logo_photo, bg="black").pack(pady=30)
@@ -165,7 +165,7 @@ class AutomaticScreen(tk.Frame):
 
         self.images = []
 
-        image_files = [f"twist_bilder/{tw.name.lower()}.png" for tw in Twist]
+        image_files = [f"twist-bilder/{tw.name.lower()}.png" for tw in Twist]
 
         for i, twist in enumerate(Twist):
             img = Image.open(image_files[i]).resize((100, 100))
@@ -200,7 +200,7 @@ class TestScreen(tk.Frame):
 
         self.images = []
 
-        image_files = [f"twist_bilder/{tw.name.lower()}.png" for tw in Twist]
+        image_files = [f"twist-bilder/{tw.name.lower()}.png" for tw in Twist]
 
         positions = [(50, 100), (200, 100), (350, 100), (500, 100),
                      (50, 250), (200, 250), (350, 250), (500, 250)]
@@ -213,7 +213,7 @@ class TestScreen(tk.Frame):
             btn = tk.Button(self, image=photo, command=lambda t=twist: self.on_button_click(t), bg='black', activebackground='black', borderwidth=0, highlightthickness=0, relief='flat',)
             btn.place(x=positions[i][0], y=positions[i][1])
 
-        logo_img = Image.open("twist_bilder/placeholder.jpg").resize((160, 430))
+        logo_img = Image.open("twist-bilder/placeholder.jpg").resize((160, 430))
         self.logo_photo = ImageTk.PhotoImage(logo_img)
 
         tk.Label(self, image=self.logo_photo, bg="black").place(x=640, y=45)
