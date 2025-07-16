@@ -1,0 +1,29 @@
+xhost +local:
+
+
+docker run -it --net=host \
+-e DISPLAY=:0 \
+-v /tmp/.X11-unix:/tmp/.X11-unix \
+-v ~/Desktop/Delta-Robot/RaspberryPi:/home/dev/Delta-Robot \
+delta-robot-app
+
+
+Hvis du får 
+
+_tkinter.TclError: couldn't connect to display ":0"
+
+kjør (ikke i docker): xhost -local:
+
+eller denne (ikke i docker): xhost +local:
+
+
+kjør i docker:
+
+export ROS_DOMAIN_ID=0
+export ROS_NAMESPACE=""
+export ROS_VERSION=2
+export ROS_DISTRO=FOXY
+export ROS_LOCALHOST_ONLY=0
+export RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+export ROS_IP=192.168.1.10
+export ROS_HOSTNAME=192.168.1.10
