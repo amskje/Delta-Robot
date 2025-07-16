@@ -92,15 +92,15 @@ class StartScreen(tk.Frame):
 
         tk.Button(button_frame, text="Manuell",
                   command=lambda: controller.show_frame(ManualScreen),
-                  **button_style).place(relx=0.17, rely=0.7, anchor="center")
+                  **button_style).place(relx=0.17, rely=0.55, anchor="center")
 
         tk.Button(button_frame, text="Automatisk",
                   command=lambda: controller.show_frame(AutomaticScreen),
-                  **button_style).place(relx=0.5, rely=0.7, anchor="center")
+                  **button_style).place(relx=0.5, rely=0.55, anchor="center")
 
         tk.Button(button_frame, text="Test",
                   command=lambda: controller.show_frame(TestScreen),
-                  **button_style).place(relx=0.83, rely=0.7, anchor="center")
+                  **button_style).place(relx=0.83, rely=0.55, anchor="center")
 
 # --- Manual Screen ---
 class ManualScreen(tk.Frame):
