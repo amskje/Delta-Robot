@@ -142,13 +142,17 @@ class AutomaticScreen(tk.Frame):
         super().__init__(parent, bg="black")
         self.controller = controller
 
-        tk.Label(self, text="Velg din Twist:", font=("Helvetica", 18), fg="white", bg="black").pack(pady=20)
+        tk.Label(self, text="Velg din Twist:", font=("Arial", 18), fg="white", bg="black").pack(pady=(20, 10))
 
-        container_frame = tk.Frame(self, bg="black")
-        container_frame.pack(expand=True, fill="both")
+        # Container frame for the twist grid
+        grid_container = tk.Frame(self, bg="black")
+        grid_container.pack(expand=True, fill="both", padx=40, pady=(0, 20))
 
-        button_frame = tk.Frame(container_frame, bg="black")
-        button_frame.pack()
+        # Create 4 columns and 3 rows that expand equally
+        for col in range(4):
+            grid_container.columnconfigure(col, weight=1)
+        for row in range(3):
+            grid_container.rowconfigure(row, weight=1)
 
         self.images = []
 
@@ -156,30 +160,46 @@ class AutomaticScreen(tk.Frame):
             try:
                 image_path = f"pictures/twist/{twist.name.lower()}.png"
                 img = Image.open(image_path)
+
+                # Larger image size
                 if twist == Twist.Notti:
-                    img.thumbnail((60, 60), Image.Resampling.LANCZOS)
+                    img.thumbnail((120, 120), Image.Resampling.LANCZOS)
                 else:
-                    img.thumbnail((100, 100), Image.Resampling.LANCZOS)
+                    img.thumbnail((150, 150), Image.Resampling.LANCZOS)
 
                 photo = ImageTk.PhotoImage(img)
                 self.images.append(photo)
 
-                btn = tk.Button(button_frame, image=photo,
-                                command=lambda t=twist: self.on_button_click(t),
-                                bg='black', borderwidth=0, highlightthickness=0,
-                                relief='flat', activebackground='black')
+                btn = tk.Button(
+                    grid_container,
+                    image=photo,
+                    command=lambda t=twist: self.on_button_click(t),
+                    bg='black',
+                    borderwidth=0,
+                    highlightthickness=0,
+                    relief='flat',
+                    activebackground='black'
+                )
                 btn.image = photo
-                btn.grid(row=i // 6, column=i % 6, padx=10, pady=10)
+                btn.grid(
+                    row=i // 4,
+                    column=i % 4,
+                    padx=10,
+                    pady=10,
+                    sticky="nsew"
+                )
 
             except Exception as e:
                 print(f"Failed to load {twist.name}: {e}")
 
-        button_frame.update_idletasks()
-        button_frame.place(relx=0.5, rely=0, anchor="n")
+        # "Tilbake" button anchored at the bottom
+        tk.Button(
+            self,
+            text="Tilbake",
+            command=lambda: controller.show_frame(StartScreen),
+            **button_style
+        ).pack(pady=20)
 
-        tk.Button(self, text="Tilbake",
-                  command=lambda: controller.show_frame(StartScreen),
-                  **button_style).pack(pady=20)
 
     def on_button_click(self, twist):
         if send_message:
