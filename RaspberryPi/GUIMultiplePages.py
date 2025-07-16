@@ -177,8 +177,8 @@ class AutomaticScreen(tk.Frame):
         for i, twist in enumerate(Twist):
             try:
                 image_path = f"pictures/twist/{twist.name.lower()}.png"
-                print(f"Loading: {image_path}")
-                img = Image.open(image_path).resize((100, 100))
+                img = Image.open(image_path)
+                img.thumbnail((100, 100), Image.ANTIALIAS)
                 photo = ImageTk.PhotoImage(img)
                 self.images.append(photo)
 
