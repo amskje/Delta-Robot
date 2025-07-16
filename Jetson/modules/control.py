@@ -20,7 +20,7 @@ class DeltaRobotController:
         self.current_pos = [3.373, 0.184, 257.886] #Test
 
 
-    def send_angles_sequence(self, angles_list):
+    def send_angles_sequence(self, angles_list, angles_down_list, down_included):
         self.serial.send_message("POSITION")
         if not self.serial.wait_for_ack("READY"):
             print("[Error] Arduino not ready for POSITION.")
@@ -30,6 +30,20 @@ class DeltaRobotController:
             a1, a2, a3 = angles
             msg = f"ANGLES {int(a1)}, {int(a2)}, {int(a3)}"
             self.serial.send_message(msg)
+
+        if (down_included == True):
+            #Send the moving down angles 
+            self.serial.send_message("DOWN")
+            if not self.serial.wait_for_ack("READY"):
+                print("[Error] Arduino not ready for down POSITION.")
+                return False
+            
+            for angles_down in angles_down_list:
+                a1, a2, a3 = angles_down
+                msg = f"ANGLES {int(a1)}, {int(a2)}, {int(a3)}"
+                self.serial.send_message(msg)
+
+
 
         self.serial.send_message("GO")
         if not self.serial.wait_for_ack("DONE"):
@@ -52,19 +66,29 @@ class DeltaRobotController:
 
         # === Phase 1: Plan path to pickup
         pickup_angles = []
+        down_angles = []
          
         kinematics.plan_linear_move(self.current_pos[0]*10, self.current_pos[1]*10, self.current_pos[2],
                                     target_pos[0]*10, target_pos[1]*10, target_pos[2], pickup_angles, waypoints=waypoints)
 
-        if not self.send_angles_sequence(pickup_angles):
+        #Pre calculated steps for moving down if twist is not picked up, maby change the number 25
+        #kan kanskje sende den 6 cm ned, også i arduino code ta å bruke 1/3 av way punktene av gangen
+        kinematics.plan_linear_move(target_pos[0]*10, target_pos[1]*10, target_pos[2],
+                                    target_pos[0]*10, target_pos[1]*10, target_pos[2]+5, down_angles, waypoints=waypoints)
+
+
+        #Her får man done for arduino hvis den har plukket opp twsiten
+        if not self.send_angles_sequence(pickup_angles, down_angles, down_included=True):
             return False
 
         # === Pickup operation
-        self.serial.send_message("PUMP_ON")
-        self.serial.send_message("PICK_UP")
-        if not self.serial.wait_for_ack("PICKED_UP"):
-            print("[Error] Pickup not acknowledged.")
-            return False
+
+
+        #self.serial.send_message("PUMP_ON")
+        
+        #if not self.serial.wait_for_ack("PICKED_UP"):
+         #   print("[Error] Pickup not acknowledged.")
+         #   return False
         
         self.current_pos = list(target_pos)
 
@@ -79,11 +103,15 @@ class DeltaRobotController:
             waypoints=config().WAYPOINTS
         )
 
-        if not self.send_angles_sequence(dropoff_angles):
+        if not self.send_angles_sequence(dropoff_angles, [], down_included=False):
             return False
+        
 
+
+    
+        #skru av pumpe på arduino når ferdig plasert
         # === Release
-        self.serial.send_message("PUMP_OFF")
+        #self.serial.send_message("PUMP_OFF")
 
         # Update robot state
         self.current_pos = list(dropoff_pos)

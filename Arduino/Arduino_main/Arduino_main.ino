@@ -15,11 +15,31 @@
 #define LIMIT3 11
 
 #define PUMP 12
+#define SENSOR A0
+
+
+//Pressure sensor set up
+const float R = 250.0;
+const float Vcc = 5.0; //Arduino ref voltage
+
+const float pickupThreshold = 0.7;  // Pressure below this means candy is picked
+const int maxPickupTries = 3;
+
+
+#define MAX_PICKDOWN 5
+int pickdown_positions[MAX_PICKDOWN][3];
+int pickdown_count = 0;
+int current_index_down = 0;
+bool receivingPickdown = false;
+
+
+
 
 
 enum State {
   IDLE,
-  RUNNING
+  RUNNING,
+  PICKING_UP
 };
 
 State currentState = IDLE;
@@ -38,6 +58,20 @@ int current_index = 0;
 String inputBuffer = "";
 bool newMessage = false;
 
+
+bool checkSensor() {
+  int rawADC = analogRead(SENSOR);
+  float voltage = rawADC * Vcc / 1023.0; // 1023 becuas 10 bit analog to digital converter on arduino
+  float current_mA = voltage / R * 1000.0; 
+  float pressure_bar = (current_mA - 4.0) * (4.0 / 16.0);  // Scale 4–20 mA to 0–4 bar
+  // it is a round 0,64 bar when the candy is lifted
+
+  if (pressure_bar < pickupThreshold){
+    return true;
+  }else {
+    return false;
+  }
+}
 
 
 
@@ -59,6 +93,8 @@ bool debounceRead(int pin, unsigned long &lastChangeTime, bool &lastStableState)
   }
   return (lastStableState == LOW && (millis() - lastChangeTime >= debounceDelay));
 }
+
+
 
 
 
@@ -171,21 +207,21 @@ bool motorsRunning() {
   return motor1.distanceToGo() != 0 || motor2.distanceToGo() != 0 || motor3.distanceToGo() != 0;
 }
 
-void moveToPosition(int idx) {
+void moveToPosition(int idx, int positionArray[][3]) {
 
   // More advanced motor control to ensure smooth movement in the x-y plane to be added here
 
   Serial.print("[Arduino] Moving to: ");
-  Serial.print(positions[idx][0]);
+  Serial.print(positionArray[idx][0]);
   Serial.print(", ");
-  Serial.print(positions[idx][1]);
+  Serial.print(positionArray[idx][1]);
   Serial.print(", ");
-  Serial.println(positions[idx][2]);
+  Serial.println(positionArray[idx][2]);
 
   
-  motor1.moveTo(positions[idx][0]);
-  motor2.moveTo(positions[idx][1]);
-  motor3.moveTo(positions[idx][2]);
+  motor1.moveTo(positionArray[idx][0]);
+  motor2.moveTo(positionArray[idx][1]);
+  motor3.moveTo(positionArray[idx][2]);
 
   long d1 = abs(motor1.distanceToGo());
   long d2 = abs(motor2.distanceToGo());
@@ -194,6 +230,9 @@ void moveToPosition(int idx) {
   long maxDist = max(d1, max(d2, d3));
 
   float baseSpeed = 80000.0; // max speed for longest-moving motor
+
+  if (maxDist == 0) maxDist = 1;  // prevent division by zero
+
   
   // Adjust speed to only move in x-y plane
   motor1.setMaxSpeed(baseSpeed * d1 / maxDist);
@@ -226,16 +265,34 @@ void readSerialMessage() {
 
     if (inputBuffer == "POSITION") {
       waypoint_count = 0;
+      pickdown_count = 0;
+      receivingPickdown = false;
       abortRequested = false;
       Serial.println("READY");
     }
+    else if (inputBuffer == "DOWN") {
+      receivingPickdown = true;
+      Serial.println("READY");
+
+    }
     else if (inputBuffer.startsWith("ANGLES") && currentState == IDLE) {
       int a1, a2, a3;
-      if (sscanf(inputBuffer.c_str(), "ANGLES %d,%d,%d", &a1, &a2, &a3) == 3 && waypoint_count < MAX_WAYPOINTS) {
-        positions[waypoint_count][0] = a1;
-        positions[waypoint_count][1] = a2;
-        positions[waypoint_count][2] = a3;
-        waypoint_count++;
+      if (sscanf(inputBuffer.c_str(), "ANGLES %d,%d,%d", &a1, &a2, &a3) == 3) {
+        if (receivingPickdown) {
+          if (pickdown_count < MAX_PICKDOWN) {
+            pickdown_positions[pickdown_count][0] = a1;
+            pickdown_positions[pickdown_count][1] = a2;
+            pickdown_positions[pickdown_count][2] = a3;
+            pickdown_count++;
+          }
+        } else {
+          if (waypoint_count < MAX_WAYPOINTS) {
+            positions[waypoint_count][0] = a1;
+            positions[waypoint_count][1] = a2;
+            positions[waypoint_count][2] = a3;
+            waypoint_count++;
+          }
+        }
       }
     }
     else if (inputBuffer == "PUMP_ON") {
@@ -247,16 +304,12 @@ void readSerialMessage() {
     else if (inputBuffer == "GO" && currentState == IDLE) {
       current_index = 0;
 
-      //test
       if (waypoint_count > 0) {
-        moveToPosition(current_index++);  // Start first move immediately
+        moveToPosition(current_index++, positions);  // Start first move immediately
         currentState = RUNNING;
       } else {
-        Serial.println("[Arduino] ⚠️ GO command received with 0 waypoints");
-  }
-
-      //test
-      //currentState = RUNNING;
+        Serial.println("[Arduino] GO command received with 0 waypoints");
+      }
     }
     else if (inputBuffer == "ABORT") {
       abortRequested = true;
@@ -282,7 +335,6 @@ void setup() {
   pinMode(LIMIT2, INPUT_PULLUP);
   pinMode(LIMIT3, INPUT_PULLUP);
   pinMode(PUMP, OUTPUT);
-
 
   motor1.setMaxSpeed(80000);
   motor2.setMaxSpeed(80000);
@@ -315,27 +367,52 @@ void loop() {
       goHome3();
       Serial.println("ABORTED");
       break;
-      }
+    }
     
     if (motorsRunning()) {
       checkLimitSwitches();
       motor1.run();
       motor2.run();
       motor3.run();
-      } else if (current_index < waypoint_count) {
-        moveToPosition(current_index++);
+    } 
+    else if (current_index < waypoint_count) {
+      moveToPosition(current_index++, positions);
+    } 
+    else if (current_index_down <= pickdown_count && current_index >= waypoint_count) {
+      digitalWrite(PUMP, HIGH);
+      if (checkSensor()){
+        current_index_down = pickdown_count;
+        Serial.println("PICKED_UP");
       } else {
-        currentState = IDLE;
-        waypoint_count = 0;
-        current_index = 0;
+          moveToPosition(current_index_down, pickdown_positions);
+          current_index_down++;
 
-        for (int i = 0; i < MAX_WAYPOINTS; i++) {
-          positions[i][0] = 0;
-          positions[i][1] = 0;
-          positions[i][2] = 0;
-        }
-        Serial.println("DONE");
+          if (current_index_down == pickdown_count){
+            Serial.println("NOT_PICKED_UP");
+            digitalWrite(PUMP, LOW);
+          }
+      }
+    }
+    else {
+      currentState = IDLE;
+      waypoint_count = 0;
+      current_index = 0;
+      pickdown_count = 0;
+      current_index_down = 0;
+
+      for (int i = 0; i < MAX_WAYPOINTS; i++) {
+        positions[i][0] = 0;
+        positions[i][1] = 0;
+        positions[i][2] = 0;
+
+        pickdown_positions[i][0] = 0;
+        pickdown_positions[i][1] = 0;
+        pickdown_positions[i][2] = 0;
+      }
+
+      Serial.println("DONE");
       }
       break;
+
   }
 }
