@@ -33,7 +33,7 @@ int current_index_down = 0;
 bool receivingPickdown = false;
 
 
-
+bool reset = false;
 
 
 enum State {
@@ -66,7 +66,7 @@ bool checkSensor() {
   float pressure_bar = (current_mA - 4.0) * (4.0 / 16.0);  // Scale 4–20 mA to 0–4 bar
   // it is a round 0,64 bar when the candy is lifted
 
-  if (pressure_bar < pickupThreshold){
+  if (pressure_bar > pickupThreshold){//Viktig!! flippe tegnet når du faktisk har pumpen og sensot koblet til
     return true;
   }else {
     return false;
@@ -302,7 +302,7 @@ void readSerialMessage() {
       digitalWrite(PUMP, LOW);
     }
     else if (inputBuffer == "GO" && currentState == IDLE) {
-      current_index = 0;
+      //current_index = 0;
 
       if (waypoint_count > 0) {
         moveToPosition(current_index++, positions);  // Start first move immediately
@@ -355,8 +355,29 @@ void loop() {
 
 
 
+
+
   switch (currentState) {
   case IDLE:
+
+    if (reset == true){
+      reset == false;
+      waypoint_count = 0;
+      current_index = 0;
+      pickdown_count = 0;
+      current_index_down = 0;
+
+      for (int i = 0; i < MAX_WAYPOINTS; i++) {
+        positions[i][0] = 0;
+        positions[i][1] = 0;
+        positions[i][2] = 0;
+
+        pickdown_positions[i][0] = 0;
+        pickdown_positions[i][1] = 0;
+        pickdown_positions[i][2] = 0;
+      }
+    
+
     break;
 
   case RUNNING:
@@ -378,41 +399,37 @@ void loop() {
     else if (current_index < waypoint_count) {
       moveToPosition(current_index++, positions);
     } 
-    else if (current_index_down <= pickdown_count && current_index >= waypoint_count) {
+    else if ((current_index_down < pickdown_count) && (current_index >= waypoint_count)) {
       digitalWrite(PUMP, HIGH);
+      Serial.println("[Arduino] 1");
+
       if (checkSensor()){
         current_index_down = pickdown_count;
         Serial.println("PICKED_UP");
       } else {
+          Serial.println("[Arduino] 2");
+
           moveToPosition(current_index_down, pickdown_positions);
           current_index_down++;
 
           if (current_index_down == pickdown_count){
             Serial.println("NOT_PICKED_UP");
             digitalWrite(PUMP, LOW);
+            stopAllMotors();
+            //currentState = IDLE;
+            //reset = true;
+            //return;
           }
       }
     }
-    else {
-      currentState = IDLE;
-      waypoint_count = 0;
-      current_index = 0;
-      pickdown_count = 0;
-      current_index_down = 0;
-
-      for (int i = 0; i < MAX_WAYPOINTS; i++) {
-        positions[i][0] = 0;
-        positions[i][1] = 0;
-        positions[i][2] = 0;
-
-        pickdown_positions[i][0] = 0;
-        pickdown_positions[i][1] = 0;
-        pickdown_positions[i][2] = 0;
-      }
-
+    else if (!motorsRunning() && currentState == RUNNING) {
       Serial.println("DONE");
-      }
-      break;
+      reset = true;
+      currentState = IDLE;
+    }
+    }
+
+    break;
 
   }
 }
