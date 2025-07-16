@@ -104,10 +104,12 @@ class StartScreen(tk.Frame):
 
 # --- Manual Screen ---
 class ManualScreen(tk.Frame):
-        
-    # Text in top left corner
-    tk.Label(self, text="Manuell", font=("Helvetica", 16, "bold"), fg="#cc0000", bg="black").place(x=20, y=10)
+
     def __init__(self, parent, controller):
+
+        # Text in top left corner
+        tk.Label(self, text="Manuell", font=("Helvetica", 16, "bold"), fg="#cc0000", bg="black").place(x=20, y=10)
+
         super().__init__(parent, bg="black")
         self.controller = controller
 
@@ -142,12 +144,12 @@ class ManualScreen(tk.Frame):
 # --- Automatic Screen ---
 class AutomaticScreen(tk.Frame):
 
-    # Text in top left corner
-    tk.Label(self, text="Automatisk", font=("Helvetica", 16, "bold"), fg="#cc0000", bg="black").place(x=20, y=10)
-
     def __init__(self, parent, controller):
         super().__init__(parent, bg="black")
         self.controller = controller
+
+        # Text in top left corner
+        tk.Label(self, text="Automatisk", font=("Helvetica", 16, "bold"), fg="#cc0000", bg="black").place(x=20, y=10)
 
         tk.Label(self, text="Velg din Twist:", font=("Arial", 18), fg="white", bg="black").pack(pady=(20, 10))
 
