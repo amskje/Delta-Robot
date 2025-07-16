@@ -89,15 +89,15 @@ class StartScreen(tk.Frame):
         button_frame = tk.Frame(self, bg="black")
         button_frame.pack()
 
-        tk.Button(button_frame, text="Manuell Modus",
+        tk.Button(button_frame, text="Manuell",
                   command=lambda: controller.show_frame(ManualScreen),
                   **button_style).grid(row=0, column=0, padx=10, pady=10)
 
-        tk.Button(button_frame, text="Automatisk Modus",
+        tk.Button(button_frame, text="Automatisk",
                   command=lambda: controller.show_frame(AutomaticScreen),
                   **button_style).grid(row=0, column=1, padx=10, pady=10)
 
-        tk.Button(button_frame, text="Test Modus",
+        tk.Button(button_frame, text="Test",
                   command=lambda: controller.show_frame(TestScreen),
                   **button_style).grid(row=0, column=2, padx=10, pady=10)
 
