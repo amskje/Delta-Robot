@@ -80,7 +80,7 @@ class StartScreen(tk.Frame):
         super().__init__(parent, bg="black")
         self.controller = controller
 
-        logo_img = Image.open("pictures/DRlogo.png").resize((300, 150))
+        logo_img = Image.open("pictures/DRLogo.png").resize((300, 150))
         self.logo_photo = ImageTk.PhotoImage(logo_img)
         tk.Label(self, image=self.logo_photo, bg="black").pack(pady=30)
 
