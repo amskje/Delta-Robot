@@ -17,7 +17,7 @@ button_style = {
     "borderwidth": 0,
     "highlightthickness": 0,
     "relief": "flat",
-    "font": ("Arial", 16)
+    "font": ("Helvetica", 16)
 }
 
 send_message = True
