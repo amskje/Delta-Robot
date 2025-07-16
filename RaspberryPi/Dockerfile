@@ -20,6 +20,9 @@ RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 WORKDIR /home/dev/Delta-Robot
 COPY . /home/dev/Delta-Robot/
 
+# Maybe fix
+ENTRYPOINT []
+
 #Default command
 #CMD ["bash"]
 
