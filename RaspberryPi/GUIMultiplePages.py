@@ -173,7 +173,7 @@ class AutomaticScreen(tk.Frame):
                 photo = ImageTk.PhotoImage(img)
                 self.images.append(photo)  # Prevent garbage collection
                 btn = tk.Button(button_frame, image=photo, command=lambda t=twist: self.on_button_click(t))
-                btn.grid(row=i // 4, column=i % 4, padx=10, pady=10)
+                btn.grid(row=i // 6, column=i % 6, padx=10, pady=10)
             except Exception as e:
                 print(f"Failed to load {twist.name}: {e}")
 
