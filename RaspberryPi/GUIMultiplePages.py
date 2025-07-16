@@ -131,9 +131,13 @@ class ManualScreen(tk.Frame):
                   command=lambda: self.move("Right"),
                   **button_style).grid(row=2, column=2, padx=5)
 
-        tk.Button(center, text="Tilbake",
-                  command=lambda: controller.show_frame(StartScreen),
-                  **button_style).grid(row=3, column=1, pady=20)
+        # "Tilbake" button anchored at the bottom
+        tk.Button(
+            self,
+            text="Tilbake",
+            command=lambda: controller.show_frame(StartScreen),
+            **button_style
+        ).pack(pady=20)
 
     def move(self, direction):
         print("Robot moves", direction)
