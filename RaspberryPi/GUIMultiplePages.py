@@ -115,8 +115,6 @@ class ManualScreen(tk.Frame):
         center = tk.Frame(self, bg="black")
         center.place(relx=0.5, rely=0.5, anchor="center")
 
-        tk.Label(center, text="Manuell kontroll", font=("Helvetica", 20), fg="white", bg="black").grid(row=0, column=1, pady=20)
-
         tk.Button(center, text="↑", width=5,
                   command=lambda: self.move("Up"),
                   **button_style).grid(row=1, column=1, pady=5)
@@ -127,7 +125,7 @@ class ManualScreen(tk.Frame):
 
         tk.Button(center, text="↓", width=5,
                   command=lambda: self.move("Down"),
-                  **button_style).grid(row=2, column=1, pady=5)
+                  **button_style).grid(row=3, column=1, pady=5)
 
         tk.Button(center, text="→", width=5,
                   command=lambda: self.move("Right"),
@@ -148,7 +146,7 @@ class AutomaticScreen(tk.Frame):
         self.controller = controller
 
         # Text in top left corner
-        tk.Label(self, text="Automatisk", font=("Helvetica", 16, "bold"), fg="#cc0000", bg="black").place(x=20, y=10)
+        tk.Label(self, text="Auto", font=("Helvetica", 16, "bold"), fg="#cc0000", bg="black").place(x=20, y=10)
 
         tk.Label(self, text="Velg din Twist:", font=("Arial", 18), fg="white", bg="black").pack(pady=(20, 10))
 
