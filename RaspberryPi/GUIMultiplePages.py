@@ -34,13 +34,11 @@ class Twist(Enum):
     Golden = 6
     Japp = 7
     Notti = 8
-    
-    '''
     Eclairs = 9
     Toffee = 10
     Lakris = 11
-    Bannan = 12
-    '''
+    Banan = 12
+    
 # --- ROS Node ---
 
 class TwistPublisher(Node):
