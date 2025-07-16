@@ -218,7 +218,7 @@ class AutomaticScreen(tk.Frame):
 
         # Back button
         tk.Button(
-            parent,
+            self,
             text="Tilbake",
             command=lambda: controller.show_frame(StartScreen),
             **button_style
