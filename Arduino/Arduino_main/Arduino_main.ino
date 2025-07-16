@@ -49,7 +49,7 @@ int pickdown_positions[MAX_PICKDOWN][3];
 int pickdown_count = 0;
 int current_index_down = 0;
 bool receivingPickdown = false;
-int pickupPauseTime = 500;
+int pickupPauseTime = 100;
 
 //Pressure sensor set up
 const float R = 250.0;
@@ -57,7 +57,7 @@ const float Vcc = 5.0; //Arduino ref voltage
 const float pickupThreshold = 0.7;  // Pressure below this means candy is picked
 const int maxPickupTries = 3;
 
-// Debounce settings
+// Debounce set up
 const unsigned long debounceDelay = 30;  // ms
 unsigned long lastLimit1Change = 0;
 unsigned long lastLimit2Change = 0;
@@ -65,6 +65,10 @@ unsigned long lastLimit3Change = 0;
 bool stableLimit1State = HIGH;
 bool stableLimit2State = HIGH;
 bool stableLimit3State = HIGH;
+
+//Drop off set up
+bool dropoffPlanned = false;
+
 
 
 
@@ -194,6 +198,7 @@ void goHome3() {
     motor2.run();
     motor3.run();
   }
+  Serial.println("IDLE POSITION");//implementer i jetson code at den tar i mot dette og etter fått meling kan man velge twist
 }
 
 
@@ -254,6 +259,9 @@ void readSerialMessage() {
       receivingPickdown = true;
       Serial.println("READY");
     }
+    else if (inputBuffer == "DROPP") {
+      dropoffPlanned = true;
+    }
     else if (inputBuffer.startsWith("ANGLES") && currentState == IDLE) {
       int a1, a2, a3;
       if (sscanf(inputBuffer.c_str(), "ANGLES %d,%d,%d", &a1, &a2, &a3) == 3) {
@@ -301,6 +309,8 @@ void readSerialMessage() {
 void setup() {
 
   Serial.begin(57600);
+
+  digitalWrite(PUMP, LOW);  
 
   pinMode(LIMIT1, INPUT_PULLUP);
   pinMode(LIMIT2, INPUT_PULLUP);
@@ -366,12 +376,19 @@ void loop() {
 
           if (current_index_down == pickdown_count){
             Serial.println("NOT_PICKED_UP");
-            digitalWrite(PUMP, LOW);
-            stopAllMotors();
+            //digitalWrite(PUMP, LOW);//av kommenter denne når du tester med sensor
+            //legge til gohome her når du tester med sensor
+            //goHome3();
           }
         } 
     }
     else {
+      if (dropoffPlanned) {
+        digitalWrite(PUMP, LOW);  
+        //Serial.println("TWIST_FOUND");
+        dropoffPlanned = false;   
+      }
+
       Serial.println("DONE");
       reset = true;
       currentState = IDLE;
