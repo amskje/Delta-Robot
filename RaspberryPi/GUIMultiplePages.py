@@ -180,7 +180,7 @@ class AutomaticScreen(tk.Frame):
                 img = Image.open(image_path)
                 # Shrink Notti fordi den er svær
                 if twist == Twist.Notti:
-                    img.thumbnail((80, 80), Image.Resampling.LANCZOS)
+                    img.thumbnail((60, 60), Image.Resampling.LANCZOS)
                 else:
                     img.thumbnail((100, 100), Image.Resampling.LANCZOS)
                 photo = ImageTk.PhotoImage(img)
