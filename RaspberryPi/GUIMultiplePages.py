@@ -80,11 +80,12 @@ class StartScreen(tk.Frame):
         super().__init__(parent, bg="black")
         self.controller = controller
 
-        logo_img = Image.open("pictures/DRLogo.png").resize((300, 150))
+        logo_img = Image.open("pictures/DRLogo.png")
+        logo_img.thumbnail((300, 150), Image.Resampling.LANCZOS)
         self.logo_photo = ImageTk.PhotoImage(logo_img)
         tk.Label(self, image=self.logo_photo, bg="black").pack(pady=30)
 
-        tk.Label(self, text="Velg modus:", font=("Arial", 20), fg="white", bg="black").pack(pady=10)
+        tk.Label(self, text="Velg modus:", font=("Helvetica", 20), fg="white", bg="black").pack(pady=10)
 
         button_frame = tk.Frame(self, bg="black")
         button_frame.pack()
@@ -110,7 +111,7 @@ class ManualScreen(tk.Frame):
         center = tk.Frame(self, bg="black")
         center.place(relx=0.5, rely=0.5, anchor="center")
 
-        tk.Label(center, text="Manuell kontroll", font=("Arial", 20), fg="white", bg="black").grid(row=0, column=1, pady=20)
+        tk.Label(center, text="Manuell kontroll", font=("Helvetica", 20), fg="white", bg="black").grid(row=0, column=1, pady=20)
 
         tk.Button(center, text="↑", width=5,
                   command=lambda: self.move("Up"),
@@ -141,7 +142,7 @@ class AutomaticScreen(tk.Frame):
         super().__init__(parent, bg="black")
         self.controller = controller
 
-        tk.Label(self, text="Velg din Twist:", font=("Arial", 18), fg="white", bg="black").pack(pady=20)
+        tk.Label(self, text="Velg din Twist:", font=("Helvetica", 18), fg="white", bg="black").pack(pady=20)
 
         container_frame = tk.Frame(self, bg="black")
         container_frame.pack(expand=True, fill="both")
@@ -191,7 +192,7 @@ class TestScreen(tk.Frame):
         super().__init__(parent, bg="black")
         self.controller = controller
 
-        tk.Label(self, text="Velg en twist:", font=("Arial", 18), fg="white", bg="black").place(x=300, y=30)
+        tk.Label(self, text="Velg en twist:", font=("Helvetica", 18), fg="white", bg="black").place(x=300, y=30)
 
         self.images = []
         image_files = [f"pictures/twist/{tw.name.lower()}.png" for tw in Twist]
