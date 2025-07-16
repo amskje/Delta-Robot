@@ -14,16 +14,18 @@ import threading
 
 # gjøre bakgrunn til kanpp liks som bakrunn, legge dette til i tk.Button: bg='black', fg='red', borderwidth=0, highlightthickness=0, relief='flat'
 
+# Universell button style
 button_style = {
-    "bg": "black",
-    "fg": "white",
-    "activebackground": "red",
-    "activeforeground": "white",
+    "bg": "#cc0000",                 # Permanent red background
+    "fg": "white",                   # White text
+    "activebackground": "#990000",  # Darker red on press
+    "activeforeground": "white",    # Still white text when active
     "borderwidth": 0,
     "highlightthickness": 0,
     "relief": "flat",
     "font": ("Arial", 16)
 }
+
 
 
 
