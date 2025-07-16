@@ -205,8 +205,12 @@ class TestScreen(tk.Frame):
 
         image_files = [f"pictures/twist/{tw.name.lower()}.png" for tw in Twist]
 
-        positions = [(50, 100), (200, 100), (350, 100), (500, 100),
-                     (50, 250), (200, 250), (350, 250), (500, 250)]
+        positions = [
+            (50, 100), (200, 100), (350, 100), (500, 100),
+            (50, 250), (200, 250), (350, 250), (500, 250),
+            (50, 400), (200, 400), (350, 400), (500, 400)
+        ]
+
 
         for i, twist in enumerate(Twist):
             img = Image.open(image_files[i]).resize((100, 100))
