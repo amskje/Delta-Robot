@@ -73,7 +73,11 @@ class DeltaRobotController:
         #Pre calculated steps for moving down if twist is not picked up, maby change the number 25
         #kan kanskje sende den 6 cm ned, også i arduino code ta å bruke 1/3 av way punktene av gangen
         kinematics.plan_linear_move(target_pos[0]*10, target_pos[1]*10, target_pos[2],
+<<<<<<< HEAD
                                     target_pos[0]*10, target_pos[1]*10, target_pos[2]+config().DOWN_MM, down_angles, waypoints=config().WAYPOINTS_DOWN)
+=======
+                                    target_pos[0]*10, target_pos[1]*10, target_pos[2]+25, down_angles, waypoints=waypoints)
+>>>>>>> 96083efb49cc35688027c919f95f723ac0b84e17
 
 
         #Her får man done for arduino hvis den har plukket opp twsiten
