@@ -158,8 +158,12 @@ class AutomaticScreen(tk.Frame):
 
         tk.Label(self, text="Velg din Twist:", font=("Arial", 18), fg="white", bg="black").pack(pady=20)
 
-        button_frame = tk.Frame(self, bg="black")
-        button_frame.pack(expand=True, fill="both")
+        container_frame = tk.Frame(self, bg="black")
+        container_frame.pack(expand=True)
+
+        button_frame = tk.Frame(container_frame, bg="black")
+        button_frame.place(relx=0.5, rely=0, anchor="n")  # Horizontally centered at top of container
+
 
         self.images = []
 
