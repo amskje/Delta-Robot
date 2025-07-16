@@ -1,5 +1,5 @@
 import tkinter as tk
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageOps
 from enum import Enum
 from tkinter import messagebox
 
@@ -178,7 +178,7 @@ class AutomaticScreen(tk.Frame):
             try:
                 image_path = f"pictures/twist/{twist.name.lower()}.png"
                 img = Image.open(image_path)
-                img.thumbnail((100, 100), Image.ANTIALIAS)
+                img.thumbnail((100, 100), Image.Resampling.LANCZOS)
                 photo = ImageTk.PhotoImage(img)
                 self.images.append(photo)
 
