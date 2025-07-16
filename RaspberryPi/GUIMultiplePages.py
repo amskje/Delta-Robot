@@ -81,7 +81,7 @@ class StartScreen(tk.Frame):
         self.controller = controller
 
         logo_img = Image.open("pictures/DRLogo.png")
-        logo_img.thumbnail((500, 250), Image.Resampling.LANCZOS)
+        logo_img.thumbnail((400, 200), Image.Resampling.LANCZOS)
         self.logo_photo = ImageTk.PhotoImage(logo_img)
         tk.Label(self, image=self.logo_photo, bg="black").pack(pady=(60, 40))
 
