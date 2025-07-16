@@ -7,7 +7,8 @@ from dataclasses import dataclass
 class ControlConfig:
     # Base parameters
     WAYPOINTS: int = 5 # Minimum 2
-    WAYPOINTS_DOWN : int = 5 #Minimum 2
+    WAYPOINTS_DOWN: int = 5 #Minimum 2
+    DOWN_MM: int = 38 #Total mm robot can move down after hitting target pos
     INITIAL_POSITION: List[float] = kinematics.Position(3.373, 0.184, 257.886)  # Initial position after goHome()
 
 def config() -> ControlConfig:
@@ -17,8 +18,7 @@ def config() -> ControlConfig:
 class DeltaRobotController:
     def __init__(self, serial_comm: comms.SerialComm):
         self.serial = serial_comm  # Instance of SerialComm
-        #self.current_pos = [0.0, 0.0, 0.0]  # Track robot position in mm
-        self.current_pos = [3.373, 0.184, 257.886] #Test
+        self.current_pos = [3.373, 0.184, 257.886] # Track robot position in mm
 
 
     def send_angles_sequence(self, angles_list, angles_down_list, down_included):
@@ -63,20 +63,17 @@ class DeltaRobotController:
         """
         print(f"[Control] Planning move to pickup at {target_pos}...")
 
-        waypoints = config().WAYPOINTS
-        waypoints_down = config().WAYPOINTS_DOWN
-
         # === Phase 1: Plan path to pickup
         pickup_angles = []
         down_angles = []
          
         kinematics.plan_linear_move(self.current_pos[0]*10, self.current_pos[1]*10, self.current_pos[2],
-                                    target_pos[0]*10, target_pos[1]*10, target_pos[2], pickup_angles, waypoints=waypoints)
+                                    target_pos[0]*10, target_pos[1]*10, target_pos[2], pickup_angles, waypoints=config().WAYPOINTS)
 
         #Pre calculated steps for moving down if twist is not picked up, maby change the number 25
         #kan kanskje sende den 6 cm ned, også i arduino code ta å bruke 1/3 av way punktene av gangen
         kinematics.plan_linear_move(target_pos[0]*10, target_pos[1]*10, target_pos[2],
-                                    target_pos[0]*10, target_pos[1]*10, target_pos[2]+40, down_angles, waypoints=waypoints_down)
+                                    target_pos[0]*10, target_pos[1]*10, target_pos[2]+config().DOWN_MM, down_angles, waypoints=config().WAYPOINTS_DOWN)
 
 
         #Her får man done for arduino hvis den har plukket opp twsiten
@@ -93,7 +90,7 @@ class DeltaRobotController:
          #   return False
         
         self.current_pos = list(target_pos) #husk, må gjøre slik at etter roboten har plukket opp må den vite akkuret hvor langt ned den har gått
-        """
+        
         print(f"[Control] Planning move to drop-off at {dropoff_pos}...")
 
         # === Phase 2: Plan path to drop-off
@@ -106,16 +103,19 @@ class DeltaRobotController:
             waypoints=config().WAYPOINTS
         )
 
+
+        # === Release
+        #self.serial.send_message("PUMP_OFF")
+        self.serial.send_message("DROPP")
+
+
+
         if not self.send_angles_sequence(dropoff_angles, [], down_included=False):
             return False
         
 
-        """
+        
     
-        #skru av pumpe på arduino når ferdig plasert
-        # === Release
-        #self.serial.send_message("PUMP_OFF")
-
         # Update robot state
         self.current_pos = list(dropoff_pos)
         print("[Control] Delivery complete.")
