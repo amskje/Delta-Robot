@@ -146,7 +146,8 @@ class AutomaticScreen(tk.Frame):
 
         # Container frame for the twist grid
         grid_container = tk.Frame(self, bg="black")
-        grid_container.pack(expand=True, fill="both", padx=40, pady=(0, 20))
+        grid_container.pack(fill="both", padx=40, pady=(0, 30))
+
 
         # Create 4 columns and 3 rows that expand equally
         for col in range(4):
