@@ -28,5 +28,6 @@ RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 WORKDIR /mnt/app
 COPY . /mnt/app
 
-ENTRYPOINT []
+COPY ros_entry.sh /ros_entry.sh
+ENTRYPOINT ["/ros_entry.sh"]
 CMD ["python3", "GUIMultiplePages.py"]
