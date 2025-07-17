@@ -11,7 +11,7 @@ class VisionConfig:
     SURFACE_HEIGHT_CM: float = 29.6
     CAM_TO_ROBOT_Y_OFFSET_CM: float = 1.6
     MODEL_PATH: str = "modules/best.pt"
-    CONF_THRESHOLD: float = 0.75
+    CONF_THRESHOLD: float = 0.8
 
     # Derived parameters will be computed
     PIXEL_TO_CM_X: float = None
