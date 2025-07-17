@@ -103,7 +103,7 @@ bool checkSensor() {
   float pressure_bar = (current_mA - 4.0) * (4.0 / 16.0);  // Scale 4–20 mA to 0–4 bar
   // it is a round 0,64 bar when the candy is lifted
 
-  if (pressure_bar > pickupThreshold){//Viktig!! flippe tegnet når du faktisk har pumpen og sensot koblet til
+  if (pressure_bar < pickupThreshold){//Viktig!! flippe tegnet når du faktisk har pumpen og sensot koblet til
     return true;
   }else {
     return false;
