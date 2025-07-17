@@ -7,7 +7,7 @@ sleep 3
 docker run -it --rm --net=host \
   -e DISPLAY=:0 \
   -v /tmp/.X11-unix:/tmp/.X11-unix \
-  -v /home/delta/Delta-Robot/RaspberryPi:/home/dev/Delta-Robot \
+  -v ~/Delta-Robot/RaspberryPi:~/Delta-Robot \
   -e ROS_VERSION=2 \
   -e ROS_DISTRO=humble \
   -e ROS_DOMAIN_ID=0 \
