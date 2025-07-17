@@ -3,7 +3,7 @@
 sleep 3
 
 # Log output to file
-docker run -it --rm --net=host \
+docker run --rm --net=host \
   -e DISPLAY=:0 \
   -v /tmp/.X11-unix:/tmp/.X11-unix \
   -v /home/delta/Desktop/Delta-Robot/RaspberryPi:/mnt/app \
