@@ -52,14 +52,19 @@ class TwistPublisher(Node):
 # --- App ---
 class App(tk.Tk):
     def __init__(self):
-        super().__init__()
-        self.title("Delta Robot GUI")
-        self.geometry(f"{screen_width}x{screen_height}+0+0")
-        self.overrideredirect(True)  # optional: removes title bar for kiosk feel
+        super().__init__()  # ❗️ must come first
 
-        self.configure(bg='black')
+        self.title("Delta Robot GUI")
+        self.configure(bg="black")
+
+        # ✅ Now we can safely get screen size
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
+        print(f"Detected screen size: {screen_width}x{screen_height}")
+
+        # Use geometry instead of fullscreen
+        self.geometry(f"{screen_width}x{screen_height}+0+0")
+        self.overrideredirect(True)  # optional: remove title bar
         print(f"Detected screen size: {screen_width}x{screen_height}")
 
         self.bind("<Escape>", lambda event: self.quit())
