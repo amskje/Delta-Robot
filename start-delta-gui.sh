@@ -1,13 +1,13 @@
 #!/bin/bash
 
-sleep 3
+sleep 3  # give X11 a moment
 
 docker run -it --rm --net=host \
   -e DISPLAY=:0 \
   -v /tmp/.X11-unix:/tmp/.X11-unix \
   -v /home/delta/Desktop/Delta-Robot/RaspberryPi:/home/dev/Delta-Robot \
   -e ROS_VERSION=2 \
-  -e ROS_DISTRO=humble \
+  -e ROS_DISTRO=foxy \
   -e ROS_DOMAIN_ID=0 \
   -e ROS_NAMESPACE="" \
   -e ROS_LOCALHOST_ONLY=0 \
