@@ -7,6 +7,8 @@ from dataclasses import dataclass
 class ControlConfig:
     # Base parameters
     WAYPOINTS: int = 5 # Minimum 2
+    WAYPOINTS_DOWN: int = 5 #Minimum 2
+    DOWN_MM: int = 36 #Total mm robot can move down after hitting target pos
     INITIAL_POSITION: List[float] = kinematics.Position(3.373, 0.184, 257.886)  # Initial position after goHome()
 
 def config() -> ControlConfig:
@@ -16,11 +18,10 @@ def config() -> ControlConfig:
 class DeltaRobotController:
     def __init__(self, serial_comm: comms.SerialComm):
         self.serial = serial_comm  # Instance of SerialComm
-        #self.current_pos = [0.0, 0.0, 0.0]  # Track robot position in mm
-        self.current_pos = [3.373, 0.184, 257.886] #Test
+        self.current_pos = [3.373, 0.184, 257.886] # Track robot position in mm
 
 
-    def send_angles_sequence(self, angles_list):
+    def send_angles_sequence(self, angles_list, angles_down_list, down_included):
         self.serial.send_message("POSITION")
         if not self.serial.wait_for_ack("READY"):
             print("[Error] Arduino not ready for POSITION.")
@@ -30,6 +31,20 @@ class DeltaRobotController:
             a1, a2, a3 = angles
             msg = f"ANGLES {int(a1)}, {int(a2)}, {int(a3)}"
             self.serial.send_message(msg)
+
+        if (down_included == True):
+            #Send the moving down angles 
+            self.serial.send_message("DOWN")
+            if not self.serial.wait_for_ack("READY"):
+                print("[Error] Arduino not ready for down POSITION.")
+                return False
+            
+            for angles_down in angles_down_list:
+                a1, a2, a3 = angles_down
+                msg = f"ANGLES {int(a1)}, {int(a2)}, {int(a3)}"
+                self.serial.send_message(msg)
+
+
 
         self.serial.send_message("GO")
         if not self.serial.wait_for_ack("DONE"):
@@ -48,29 +63,39 @@ class DeltaRobotController:
         """
         print(f"[Control] Planning move to pickup at {target_pos}...")
 
-        waypoints = config().WAYPOINTS
-
         # === Phase 1: Plan path to pickup
         pickup_angles = []
+        down_angles = []
          
         kinematics.plan_linear_move(self.current_pos[0]*10, self.current_pos[1]*10, self.current_pos[2],
-                                    target_pos[0]*10, target_pos[1]*10, target_pos[2], pickup_angles, waypoints=waypoints)
+                                    target_pos[0]*10, target_pos[1]*10, target_pos[2], pickup_angles, waypoints=config().WAYPOINTS)
 
-        if not self.send_angles_sequence(pickup_angles):
+        #Pre calculated steps for moving down if twist is not picked up, maby change the number 25
+        #kan kanskje sende den 6 cm ned, også i arduino code ta å bruke 1/3 av way punktene av gangen
+        kinematics.plan_linear_move(target_pos[0]*10, target_pos[1]*10, target_pos[2],
+                                    target_pos[0]*10, target_pos[1]*10, target_pos[2]+config().DOWN_MM, down_angles, waypoints=config().WAYPOINTS_DOWN)
+
+
+
+        #Her får man done for arduino hvis den har plukket opp twsiten
+        if not self.send_angles_sequence(pickup_angles, down_angles, down_included=True):
             return False
 
         # === Pickup operation
-        self.serial.send_message("PUMP_ON")
-        self.serial.send_message("PICK_UP")
-        if not self.serial.wait_for_ack("PICKED_UP"):
-            print("[Error] Pickup not acknowledged.")
-            return False
-        
-        self.current_pos = list(target_pos)
 
+
+        #self.serial.send_message("PUMP_ON")
+        
+        #if not self.serial.wait_for_ack("PICKED_UP"):
+         #   print("[Error] Pickup not acknowledged.")
+         #   return False
+        
+        self.current_pos = list(target_pos) #husk, må gjøre slik at etter roboten har plukket opp må den vite akkuret hvor langt ned den har gått
+        
         print(f"[Control] Planning move to drop-off at {dropoff_pos}...")
 
         # === Phase 2: Plan path to drop-off
+        
         dropoff_angles = []
         kinematics.plan_linear_move(
             *target_pos,
@@ -79,12 +104,19 @@ class DeltaRobotController:
             waypoints=config().WAYPOINTS
         )
 
-        if not self.send_angles_sequence(dropoff_angles):
-            return False
 
         # === Release
-        self.serial.send_message("PUMP_OFF")
+        #self.serial.send_message("PUMP_OFF")
+        self.serial.send_message("DROPP")
 
+
+
+        if not self.send_angles_sequence(dropoff_angles, [], down_included=False):
+            return False
+        
+
+        
+    
         # Update robot state
         self.current_pos = list(dropoff_pos)
         print("[Control] Delivery complete.")

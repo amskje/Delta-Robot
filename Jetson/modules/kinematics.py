@@ -117,7 +117,6 @@ def plan_linear_move(
         x = x0 + t * (x1 - x0)
         y = y0 + t * (y1 - y0)
         z = z0 + t * (z1 - z0)
-        print(f"[Debug]: Waypoints: x{i}: {x}, y{i}: {y}, z{i}: {z}")
         theta1, theta2, theta3 = inverse_kinematics(x, y, z)
 
         # Skip if any angle is clearly invalid (0.0 used as error signal)
