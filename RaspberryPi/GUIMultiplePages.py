@@ -3,14 +3,9 @@ from PIL import Image, ImageTk
 from enum import Enum
 from tkinter import messagebox
 
-try:
-    import rclpy
-    from rclpy.node import Node
-    from std_msgs.msg import String
-except ImportError:
-    print("ROS libraries not found. Running without ROS communication.")
-    rclpy = None
-
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
 import threading
 
 # --- Global Style ---
@@ -282,12 +277,10 @@ class TestScreen(tk.Frame):
 
 # --- Main ---
 if __name__ == "__main__":
-    if send_message and rclpy:
+    if send_message:
         rclpy.init()
         twist_publisher = TwistPublisher()
         threading.Thread(target=rclpy.spin, args=(twist_publisher,), daemon=True).start()
-    else:
-        twist_publisher = None
 
     app = App()
     app.mainloop()
