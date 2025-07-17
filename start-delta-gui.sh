@@ -1,13 +1,11 @@
 #!/bin/bash
 
-# OPTIONAL: delay to give X11 some time to start
 sleep 3
 
-# Launch the GUI container
 docker run -it --rm --net=host \
   -e DISPLAY=:0 \
   -v /tmp/.X11-unix:/tmp/.X11-unix \
-  -v /home/delta/Delta-Robot/RaspberryPi:/home/dev/Delta-Robot \
+  -v /home/delta/Desktop/Delta-Robot/RaspberryPi:/home/dev/Delta-Robot \
   -e ROS_VERSION=2 \
   -e ROS_DISTRO=humble \
   -e ROS_DOMAIN_ID=0 \
