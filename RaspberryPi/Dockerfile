@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
 	python3-pip \
 	python3-tk \
 	ros-humble-rclpy \
-	ros-humble-std-msg \
+	ros-humble-std-msgs \
 	ros-humble-example-interfaces \
 	python3-colcon-common-extensions \
 	&& rm -rf /var/lib/apt/lists/*
