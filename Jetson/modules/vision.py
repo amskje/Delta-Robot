@@ -11,7 +11,7 @@ class VisionConfig:
     SURFACE_HEIGHT_CM: float = 29.6
     CAM_TO_ROBOT_Y_OFFSET_CM: float = 1.6
     MODEL_PATH: str = "modules/best.pt"
-    CONF_THRESHOLD: float = 0.9
+    CONF_THRESHOLD: float = 0.75
 
     # Derived parameters will be computed
     PIXEL_TO_CM_X: float = None
@@ -98,6 +98,11 @@ def detect_target(model, target_class):
         y_cm = (y_pixel - config().IMG_CENTER_Y) * config().PIXEL_TO_CM_Y
 
         matches.append((class_name, x_cm, y_cm, conf))
+
+    if matches:
+        cv2.imshow("Picture", frame)
+        cv2.waitKey(5000)
+        cv2.destroyWindow("Picture")
 
     return matches
 
