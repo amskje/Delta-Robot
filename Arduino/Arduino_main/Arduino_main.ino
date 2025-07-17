@@ -33,9 +33,15 @@ bool abortRequested = false;
 String inputBuffer = "";
 bool newMessage = false;
 
+//Motor set up
 AccelStepper motor1(AccelStepper::DRIVER, STEP1, DIR1);
 AccelStepper motor2(AccelStepper::DRIVER, STEP2, DIR2);
 AccelStepper motor3(AccelStepper::DRIVER, STEP3, DIR3);
+                  
+float baseSpeed = 80000.0; // max speed for longest-moving motor 2000
+float minSpeed = 500.0;//1000
+float maxSpeed = 80000.0;//4000
+float maxAcceleration = 40000.0;//2000
 
 //Move to target setup
 #define MAX_WAYPOINTS 10
@@ -97,7 +103,7 @@ bool checkSensor() {
   float pressure_bar = (current_mA - 4.0) * (4.0 / 16.0);  // Scale 4–20 mA to 0–4 bar
   // it is a round 0,64 bar when the candy is lifted
 
-  if (pressure_bar > pickupThreshold){//Viktig!! flippe tegnet når du faktisk har pumpen og sensot koblet til
+  if (pressure_bar < pickupThreshold){//Viktig!! flippe tegnet når du faktisk har pumpen og sensot koblet til
     return true;
   }else {
     return false;
@@ -191,12 +197,19 @@ void goHome3() {
   // Back off slightly from limit switches in sync
   motor1.moveTo(-1000);
   motor2.moveTo(-1000);
-  motor3.moveTo(-1000);
+  motor3.moveTo(-1000);//husk endre til -1000
 
   while (motor1.distanceToGo() != 0 || motor2.distanceToGo() != 0 || motor3.distanceToGo() != 0) {
     motor1.run();
     motor2.run();
     motor3.run();
+
+    //float speedmol = motor3.speed();
+    //Serial.print("speed: ");
+    //Serial.print(speedmol);
+    //float accmol = motor3.acceleration();
+    //Serial.print("Acc: ");
+    //Serial.println(accmol);
   }
   Serial.println("IDLE POSITION");//implementer i jetson code at den tar i mot dette og etter fått meling kan man velge twist
 }
@@ -218,14 +231,21 @@ void moveToPosition(int idx, int positionArray[][3]) {
 
   long maxDist = max(d1, max(d2, d3));
 
-  float baseSpeed = 80000.0; // max speed for longest-moving motor
-
-  if (maxDist == 0) maxDist = 1;  // prevent division by zero
+  //if (maxDist == 0) maxDist = 1;  // prevent division by zero
 
   // Adjust speed to only move in x-y plane
+  //motor1.setMaxSpeed(max(minSpeed, (baseSpeed * d1 / maxDist)));
+  //motor2.setMaxSpeed(max(minSpeed, (baseSpeed * d2 / maxDist)));
+  //motor3.setMaxSpeed(max(minSpeed, (baseSpeed * d3 / maxDist)));
+
   motor1.setMaxSpeed(baseSpeed * d1 / maxDist);
   motor2.setMaxSpeed(baseSpeed * d2 / maxDist);
   motor3.setMaxSpeed(baseSpeed * d3 / maxDist);
+
+  //motor1.setMaxSpeed(maxSpeed);
+  //motor2.setMaxSpeed(maxSpeed);
+  //motor3.setMaxSpeed(maxSpeed);
+
 }
 
 void stopAllMotors() {
@@ -317,13 +337,15 @@ void setup() {
   pinMode(LIMIT3, INPUT_PULLUP);
   pinMode(PUMP, OUTPUT);
 
-  motor1.setMaxSpeed(80000);
-  motor2.setMaxSpeed(80000);
-  motor3.setMaxSpeed(80000);
+  motor1.setMaxSpeed(maxSpeed);
+  motor2.setMaxSpeed(maxSpeed);
+  motor3.setMaxSpeed(maxSpeed);
 
-  motor1.setAcceleration(40000);
-  motor2.setAcceleration(40000);
-  motor3.setAcceleration(40000);
+  motor1.setAcceleration(maxAcceleration);
+  motor2.setAcceleration(maxAcceleration);
+  motor3.setAcceleration(maxAcceleration);
+
+
 
   goHome3();
 
