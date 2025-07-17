@@ -54,8 +54,14 @@ class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Delta Robot GUI")
-        self.attributes('-fullscreen', True)
+        self.geometry(f"{screen_width}x{screen_height}+0+0")
+        self.overrideredirect(True)  # optional: removes title bar for kiosk feel
+
         self.configure(bg='black')
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        print(f"Detected screen size: {screen_width}x{screen_height}")
+
         self.bind("<Escape>", lambda event: self.quit())
 
         container = tk.Frame(self, bg='black')
@@ -260,10 +266,6 @@ class TestScreen(tk.Frame):
                             borderwidth=0, highlightthickness=0, relief='flat')
             btn.place(x=positions[i][0], y=positions[i][1])
             btn.image = photo
-
-        logo_img = Image.open("pictures/placeholder.jpg").resize((160, 430))
-        self.logo_photo = ImageTk.PhotoImage(logo_img)
-        tk.Label(self, image=self.logo_photo, bg="black").place(x=640, y=45)
 
         tk.Button(self, text="Tilbake",
                   command=lambda: controller.show_frame(StartScreen),
