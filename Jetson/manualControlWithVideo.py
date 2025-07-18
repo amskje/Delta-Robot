@@ -53,7 +53,7 @@ def main():
         video_thread.join()
         return
 
-    current_position = kinematics.Position(3.373, 0.184, 257.886)
+    current_position = kinematics.Position(conCFG.INITIAL_POSITION[0], conCFG.INITIAL_POSITION[1], conCFG.INITIAL_POSITION[2])
 
     print("Delta Robot Control Interface")
     print("Enter coordinates as: X Y Z  (in mm)")
