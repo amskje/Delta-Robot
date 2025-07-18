@@ -70,7 +70,7 @@ def main():
                 raise ValueError("Expected three values")
 
             x, y, z = map(float, parts)
-            print(f"Planning move to ({x}, {y}, {z}) cm...")
+            print(f"Planning move to ({x}, {y}, {z}) mm...")
 
             angles = []
             kinematics.plan_linear_move(

@@ -3,9 +3,9 @@ from . import kinematics
 from typing import List, Tuple
 from dataclasses import dataclass
 
-HOME_X = 3.207
-HOME_Y = 0.175
-HOME_Z = 244.014
+HOME_X = 3.373
+HOME_Y = 0.184
+HOME_Z = 257.886
 
 @dataclass
 class ControlConfig:
