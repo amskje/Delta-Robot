@@ -13,7 +13,7 @@ class ControlConfig:
     WAYPOINTS: int = 5 # Minimum 2
     WAYPOINTS_DOWN: int = 5 #Minimum 2
     DOWN_MM: int = 36 #Total mm robot can move down after hitting target pos
-    INITIAL_POSITION: List[float] = [HOME_X, HOME_Y, HOME_Z]  # Initial position after goHome()
+    INITIAL_POSITION: List[float] = kinematics.Position(HOME_X, HOME_Y, HOME_Z)  # Initial position after goHome()
 
 def config() -> ControlConfig:
     return ControlConfig()
