@@ -32,7 +32,7 @@ def main():
         return
 
     print("Delta Robot Control Interface")
-    print("Enter coordinates as: X Y Z  (in cm)")
+    print("Enter coordinates as: X Y Z  (in mm)")
     print("Type 'q' to quit.\n")
 
     while True:
@@ -52,8 +52,8 @@ def main():
             print(f"Planning move to ({x}, {y}, {z}) cm...")
             angles = []
             kinematics.plan_linear_move(
-                current_position.x * 10, current_position.y * 10, current_position.z,
-                x * 10, y * 10, z,
+                current_position.x, current_position.y, current_position.z,
+                x, y, z,
                 angles,
                 conCFG.WAYPOINTS
             )

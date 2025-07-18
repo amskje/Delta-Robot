@@ -94,10 +94,10 @@ def detect_target(model, target_class):
         x_pixel = int(box.xywh[0][0].item())
         y_pixel = int(box.xywh[0][1].item())
 
-        x_cm = (x_pixel - config().IMG_CENTER_X) * config().PIXEL_TO_CM_X
-        y_cm = (y_pixel - config().IMG_CENTER_Y) * config().PIXEL_TO_CM_Y
+        x_mm = (x_pixel - config().IMG_CENTER_X) * config().PIXEL_TO_CM_X * 10  # Convert to mm
+        y_mm = (y_pixel - config().IMG_CENTER_Y) * config().PIXEL_TO_CM_Y * 10  # Convert to mm
 
-        matches.append((class_name, x_cm, y_cm, conf))
+        matches.append((class_name, x_mm, y_mm, conf))
 
     if matches:
         cv2.imshow("Picture", frame)
