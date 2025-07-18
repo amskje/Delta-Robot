@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <math.h>
 #include <AccelStepper.h>
+#include <MultiStepper.h>
+
 
 
 //Pin setup
@@ -37,11 +39,13 @@ bool newMessage = false;
 AccelStepper motor1(AccelStepper::DRIVER, STEP1, DIR1);
 AccelStepper motor2(AccelStepper::DRIVER, STEP2, DIR2);
 AccelStepper motor3(AccelStepper::DRIVER, STEP3, DIR3);
+
+MultiStepper steppers;
                   
-float baseSpeed = 80000.0; // max speed for longest-moving motor 2000
+float baseSpeed = 1500.0; // max speed for longest-moving motor 2000
 float minSpeed = 500.0;//1000
-float maxSpeed = 80000.0;//4000
-float maxAcceleration = 40000.0;//2000
+float maxSpeed = 1500.0;//4000
+float maxAcceleration = 1500.0;//2000
 
 //Move to target setup
 #define MAX_WAYPOINTS 10
@@ -74,9 +78,6 @@ bool stableLimit3State = HIGH;
 
 //Drop off set up
 bool dropoffPlanned = false;
-
-
-
 
 void clearWaypoints() {
   waypoint_count = 0;
@@ -135,32 +136,11 @@ void checkLimitSwitches() {
   }
 }
 
-
-void goHome() {
-  homeMotor(motor1, LIMIT1);
-  homeMotor(motor2, LIMIT2);
-  homeMotor(motor3, LIMIT3);
-}
-
-
-void homeMotor(AccelStepper &motor, int limitPin) {
-  while (digitalRead(limitPin) == HIGH) {
-    motor.move(100);//Endre her hvis endre step på motor, var 10
-    motor.run();
-  }
-  motor.setCurrentPosition(0);
-  motor.moveTo(-1000);//Endre her hvis endre step på motor, var -100
-  while (motor.distanceToGo() != 0) {
-    motor.run();
-  }
-}
-
-
 void goHome3() {
   // Move all motors toward their limits simultaneously
-  motor1.move(20000);  // move far enough to ensure hitting limit
-  motor2.move(20000);
-  motor3.move(20000);
+  motor1.move(2000);  // move far enough to ensure hitting limit
+  motor2.move(2000);
+  motor3.move(2000);
 
   bool limit1Hit = false;
   bool limit2Hit = false;
@@ -195,9 +175,9 @@ void goHome3() {
   motor3.setCurrentPosition(0);
 
   // Back off slightly from limit switches in sync
-  motor1.moveTo(-1000);
-  motor2.moveTo(-1000);
-  motor3.moveTo(-1000);//husk endre til -1000
+  motor1.moveTo(-100);
+  motor2.moveTo(-100);
+  motor3.moveTo(-100);//husk endre til -1000
 
   while (motor1.distanceToGo() != 0 || motor2.distanceToGo() != 0 || motor3.distanceToGo() != 0) {
     motor1.run();
@@ -219,33 +199,14 @@ bool motorsRunning() {
   return motor1.distanceToGo() != 0 || motor2.distanceToGo() != 0 || motor3.distanceToGo() != 0;
 }
 
+long stepper_positions[3];  // target steps for each motor
+
 void moveToPosition(int idx, int positionArray[][3]) {
-  // More advanced motor control to ensure smooth movement in the x-y plane to be added here  
-  motor1.moveTo(positionArray[idx][0]);
-  motor2.moveTo(positionArray[idx][1]);
-  motor3.moveTo(positionArray[idx][2]);
+  stepper_positions[0] = positionArray[idx][0];
+  stepper_positions[1] = positionArray[idx][1];
+  stepper_positions[2] = positionArray[idx][2];
 
-  long d1 = abs(motor1.distanceToGo());
-  long d2 = abs(motor2.distanceToGo());
-  long d3 = abs(motor3.distanceToGo());
-
-  long maxDist = max(d1, max(d2, d3));
-
-  //if (maxDist == 0) maxDist = 1;  // prevent division by zero
-
-  // Adjust speed to only move in x-y plane
-  //motor1.setMaxSpeed(max(minSpeed, (baseSpeed * d1 / maxDist)));
-  //motor2.setMaxSpeed(max(minSpeed, (baseSpeed * d2 / maxDist)));
-  //motor3.setMaxSpeed(max(minSpeed, (baseSpeed * d3 / maxDist)));
-
-  motor1.setMaxSpeed(baseSpeed * d1 / maxDist);
-  motor2.setMaxSpeed(baseSpeed * d2 / maxDist);
-  motor3.setMaxSpeed(baseSpeed * d3 / maxDist);
-
-  //motor1.setMaxSpeed(maxSpeed);
-  //motor2.setMaxSpeed(maxSpeed);
-  //motor3.setMaxSpeed(maxSpeed);
-
+  steppers.moveTo(stepper_positions);
 }
 
 void stopAllMotors() {
@@ -345,7 +306,9 @@ void setup() {
   motor2.setAcceleration(maxAcceleration);
   motor3.setAcceleration(maxAcceleration);
 
-
+  steppers.addStepper(motor1);
+  steppers.addStepper(motor2);
+  steppers.addStepper(motor3);
 
   goHome3();
 
@@ -378,9 +341,7 @@ void loop() {
     
     if (motorsRunning()) {
       checkLimitSwitches();
-      motor1.run();
-      motor2.run();
-      motor3.run();
+      steppers.run();
     } 
     else if (current_index < waypoint_count) {
       moveToPosition(current_index++, positions);
