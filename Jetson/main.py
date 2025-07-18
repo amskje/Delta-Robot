@@ -87,7 +87,7 @@ def main():
                 log(f"Target detected at x={target_x:.2f} cm, y={target_y:.2f} cm")
 
                 success = controller.twist_delivery(
-                    target_pos=(target_y, target_x, 250), #test, byttet om rekkefølgen på x og y
+                    target_pos=(target_x, target_y, 250),
                     dropoff_pos=(0, 0, 250)
                 )
 

@@ -3,13 +3,17 @@ from . import kinematics
 from typing import List, Tuple
 from dataclasses import dataclass
 
+HOME_X = 3.207
+HOME_Y = 0.175
+HOME_Z = 244.014
+
 @dataclass
 class ControlConfig:
     # Base parameters
     WAYPOINTS: int = 5 # Minimum 2
     WAYPOINTS_DOWN: int = 5 #Minimum 2
     DOWN_MM: int = 36 #Total mm robot can move down after hitting target pos
-    INITIAL_POSITION: List[float] = kinematics.Position(3.373, 0.184, 257.886)  # Initial position after goHome()
+    INITIAL_POSITION: List[float] = kinematics.Position(HOME_X, HOME_Y, HOME_Z)  # Initial position after goHome()
 
 def config() -> ControlConfig:
     return ControlConfig()
@@ -18,7 +22,7 @@ def config() -> ControlConfig:
 class DeltaRobotController:
     def __init__(self, serial_comm: comms.SerialComm):
         self.serial = serial_comm  # Instance of SerialComm
-        self.current_pos = [3.373, 0.184, 257.886] # Track robot position in mm
+        self.current_pos = [HOME_X, HOME_Y, HOME_Z] # Track robot position in mm
 
 
     def send_angles_sequence(self, angles_list, angles_down_list, down_included):
