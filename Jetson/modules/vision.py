@@ -101,6 +101,11 @@ def detect_target(model, target_class):
         x_cm = (x_pixel - config().IMG_CENTER_X) * config().PIXEL_TO_CM_X
         y_cm = (y_pixel - config().IMG_CENTER_Y) * config().PIXEL_TO_CM_Y
 
+        cv2.circle(frame, (x_pixel, y_pixel), radius=5, color=(0, 0, 255), thickness=-1)
+        coord_label = f"({x_cm:.1f}, {y_cm:.1f}) cm"
+        cv2.putText(frame, coord_label, (x_pixel + 5, y_pixel - 5),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+
         matches.append((class_name, x_cm, y_cm, conf))
 
     if matches:
