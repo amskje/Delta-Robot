@@ -41,8 +41,8 @@ class Position:
 def single_arm_ik(x0, y0, z0):
     conf = config()
 
-    y1 = -0.5 * 0.57735 * conf.r_base
-    y0 -= 0.5 * 0.57735 * conf.r_end
+    y1 = -0.5 * conf.tan30 * conf.r_base
+    y0 -= 0.5 * conf.tan30 * conf.r_end
 
     a = (x0 * x0 + y0 * y0 + z0 * z0 + conf.l_biceps * conf.l_biceps - conf.l_forearm * conf.l_forearm - y1 * y1) / (2 * z0)
     b = (y1 - y0) / z0
