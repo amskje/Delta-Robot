@@ -5,25 +5,21 @@ from dataclasses import dataclass
 @dataclass
 class KinematicsConfig:
     # Base geometry [mm]
-    r_base: float = 70.0
-    r_end: float = 24.0
+    r_base: float = 2*70.0
+    r_end: float = 2*24.0
     l_biceps: float = 147.0
     l_forearm: float = 250.0
 
     # Stepper settings
-    pulses_per_rev: int = 80000
+    pulses_per_rev: int = 8000
 
     # Motion planning
     MAX_waypoints: int = 5
 
-    # Derived/calculated constants
-    tan30: float = None
-    ZERO_ANGLE1: float = None
-    ZERO_ANGLE2: float = None
-    ZERO_ANGLE3: float = None
-
     def __post_init__(self):
         self.tan30 = math.tan(math.radians(30))
+        self.cos120 = math.cos(math.radians(120))
+        self.sin120 = math.sin(math.radians(120))
         self.ZERO_ANGLE1 = 408 * 360 / self.pulses_per_rev
         self.ZERO_ANGLE2 = 391 * 360 / self.pulses_per_rev
         self.ZERO_ANGLE3 = 422 * 360 / self.pulses_per_rev
@@ -43,55 +39,40 @@ class Position:
         self.z = z
 
 def single_arm_ik(x0, y0, z0):
-    """Computes the angle for one arm given x, y, z.
-    Returns (success, thetaDeg)"""
-    y1 = -0.5 * config().tan30 * config().r_base
-    y0 -= 0.5 * config().tan30 * config().r_end
+    conf = config()
 
+    y1 = -0.5 * 0.57735 * conf.r_base
+    y0 -= 0.5 * 0.57735 * conf.r_end
 
-    a = (x0**2 + y0**2 + z0**2 + config().l_biceps**2 - config().l_forearm**2 - y1**2) / (2.0 * z0)
+    a = (x0 * x0 + y0 * y0 + z0 * z0 + conf.l_biceps * conf.l_biceps - conf.l_forearm * conf.l_forearm - y1 * y1) / (2 * z0)
     b = (y1 - y0) / z0
 
-    d = -(a + b * y1)**2 + config().l_biceps * (b**2 * config().l_biceps + config().l_biceps)
-
+    d = -(a + b * y1) * (a + b * y1) + conf.l_biceps * (b * b * conf.l_biceps + conf.l_biceps)
     if d < 0:
-        print(f"  → FAIL: d={d:.2f} < 0 → unreachable")
-        return False, 0.0
+        return -1, None
 
-
-    yj = (y1 - a * b - math.sqrt(d)) / (b**2 + 1)
+    yj = (y1 - a * b - math.sqrt(d)) / (b * b + 1)
     zj = a + b * yj
+    theta = math.degrees(math.atan(-zj / (y1 - yj)))
+    if yj > y1:
+        theta += 180.0
+    return 0, theta
 
-    theta = math.atan2(-zj, y1 - yj) * 180.0 / math.pi
-    return True, theta
+def inverse_kinematics(x0, y0, z0):
+    conf = config()
+    status, theta1 = single_arm_ik(x0, y0, z0)
+    if status != 0:
+        return -1, None, None, None
 
-def rotate_xy(x, y, angle_rad):
-    xr = x * math.cos(angle_rad) - y * math.sin(angle_rad)
-    yr = x * math.sin(angle_rad) + y * math.cos(angle_rad)
-    return xr, yr
+    status, theta2 = single_arm_ik(x0 * conf.cos120 + y0 * conf.sin120, y0 * conf.cos120 - x0 * conf.sin120, z0)
+    if status != 0:
+        return -1, None, None, None
 
-def inverse_kinematics(x, y, z):
-    """Returns tuple (theta1, theta2, theta3) in degrees.
-    If any arm fails, it returns 0.0 for that angle."""
-    # Arm 1
-    ok1, t1 = single_arm_ik(x, y, z)
-    theta1 = t1 - config().ZERO_ANGLE1 if ok1 else 0.0
+    status, theta3 = single_arm_ik(x0 * conf.cos120 - y0 * conf.sin120, y0 * conf.cos120 + x0 * conf.sin120, z0)
+    if status != 0:
+        return -1, None, None, None
 
-    # Arm 2
-    xr2, yr2 = rotate_xy(x, y, 2.0 * math.pi / 3.0)
-    ok2, t2 = single_arm_ik(xr2, yr2, z)
-    theta2 = t2 - config().ZERO_ANGLE2 if ok2 else 0.0
-
-    # Arm 3
-    xr3, yr3 = rotate_xy(x, y, -2.0 * math.pi / 3.0)
-    ok3, t3 = single_arm_ik(xr3, yr3, z)
-    theta3 = t3 - config().ZERO_ANGLE3 if ok3 else 0.0
-
-    if not ok1: print("  → Arm 1 failed")
-    if not ok2: print("  → Arm 2 failed")
-    if not ok3: print("  → Arm 3 failed")
-
-    return theta1, theta2, theta3
+    return 0, theta1, theta2, theta3
 
 def plan_linear_move(
     x0: float, y0: float, z0: float,
@@ -117,10 +98,11 @@ def plan_linear_move(
         x = x0 + t * (x1 - x0)
         y = y0 + t * (y1 - y0)
         z = z0 + t * (z1 - z0)
-        theta1, theta2, theta3 = inverse_kinematics(x, y, z)
+        status, theta1, theta2, theta3 = inverse_kinematics(x, y, z)
 
-        # Skip if any angle is clearly invalid (0.0 used as error signal)
-        if theta1 == 0.0 or theta2 == 0.0 or theta3 == 0.0:
+        # Skip if any angle is clearly invalid (None used as error signal)
+        if theta1 == None or theta2 == None or theta3 == None:
+            print(f"Skipping invalid angles at step {i}: ({theta1}, {theta2}, {theta3})")
             continue
 
         angles_list.append((
