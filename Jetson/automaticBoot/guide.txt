@@ -1,8 +1,10 @@
 NB!! change the paths and names
+NB!! Remember to commet out cv2.imshow in vision code
+NB!! changfe the path to the model:return YOLO('/home/delta/Documents/code/Delta-Robot/Jetson/modules/best.pt')
 
-run in terminal to make it executable, the main file: chmod +x /Documents/code/Delta-Robot/Jetson/main.py
+run in terminal to make it executable, the main file: chmod +x /home/delta/Documents/code/Delta-Robot/Jetson/main.py
 
-move startupLauncher file to the Jetson file and make executable: chmod +x /Documents/code/Delta-Robot/Jetson/startupLauncher.sh
+move startupLauncher file to the Jetson file and make executable: chmod +x /home/delta/Documents/code/Delta-Robot/Jetson/startupLauncher.sh
 
 
 create the file: sudo nano /etc/systemd/system/ros2_boot.service
@@ -12,8 +14,8 @@ create the file: sudo nano /etc/systemd/system/ros2_boot.service
         After=network.target dev-ttyACM0.device
 
         [Service]
-        ExecStart=/home/jetson/startup_launcher.sh
-        User=jetson
+        ExecStart=/home/delta/Documents/code/Delta-Robot/Jetson/startup_launcher.sh
+        User=delta
         Restart=on-failure
         RestartSec=3
 
@@ -30,9 +32,14 @@ enable and start the service:
 
 test: reboot
 
-to see output form the script: journalctl -u ros2_boot.service -n 50 --no-pager
+to see output form the script 30 lines: journalctl -u ros2_boot.service -n 30 --no-pager
+to see output form the script live: journalctl -u ros2_boot.service -f
+
+check status: sudo systemctl status ros2_boot.service
 
 stop the script manually: sudo systemctl stop ros2_boot.service
+
+restart the script: sudo systemctl restart ros2_boot.service
 
 
 the script wil run in the background
