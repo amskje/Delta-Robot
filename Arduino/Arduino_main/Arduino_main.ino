@@ -104,7 +104,7 @@ bool checkSensor() {
   float pressure_bar = (current_mA - 4.0) * (4.0 / 16.0);  // Scale 4–20 mA to 0–4 bar
   // it is a round 0,64 bar when the candy is lifted
 
-  if (pressure_bar < pickupThreshold){//Viktig!! flippe tegnet når du faktisk har pumpen og sensot koblet til
+  if (pressure_bar < pickupThreshold){
     return true;
   }else {
     return false;
@@ -138,9 +138,9 @@ void checkLimitSwitches() {
 
 void goHome3() {
   // Move all motors toward their limits simultaneously
-  motor1.move(2000);  // move far enough to ensure hitting limit
-  motor2.move(2000);
-  motor3.move(2000);
+  motor1.move(-2000);  // move far enough to ensure hitting limit
+  motor2.move(-2000);
+  motor3.move(-2000);
 
   bool limit1Hit = false;
   bool limit2Hit = false;
@@ -175,25 +175,18 @@ void goHome3() {
   motor3.setCurrentPosition(0);
 
   // Back off slightly from limit switches in sync
-  motor1.moveTo(-100);
-  motor2.moveTo(-100);
-  motor3.moveTo(-100);//husk endre til -1000
+  motor1.moveTo(100);
+  motor2.moveTo(100);
+  motor3.moveTo(100);
 
   while (motor1.distanceToGo() != 0 || motor2.distanceToGo() != 0 || motor3.distanceToGo() != 0) {
     motor1.run();
     motor2.run();
     motor3.run();
-
-    //float speedmol = motor3.speed();
-    //Serial.print("speed: ");
-    //Serial.print(speedmol);
-    //float accmol = motor3.acceleration();
-    //Serial.print("Acc: ");
-    //Serial.println(accmol);
   }
   Serial.println("IDLE POSITION");//implementer i jetson code at den tar i mot dette og etter fått meling kan man velge twist
+  
 }
-
 
 bool motorsRunning() {
   return motor1.distanceToGo() != 0 || motor2.distanceToGo() != 0 || motor3.distanceToGo() != 0;
@@ -312,6 +305,8 @@ void setup() {
 
   goHome3();
 
+  goHome3();
+
   Serial.println("Finished setup"); // signal Jetson
 }
 
@@ -359,9 +354,6 @@ void loop() {
 
           if (current_index_down == pickdown_count){
             Serial.println("NOT_PICKED_UP");
-            //digitalWrite(PUMP, LOW);//av kommenter denne når du tester med sensor
-            //legge til gohome her når du tester med sensor
-            //goHome3();
           }
         } 
     }
