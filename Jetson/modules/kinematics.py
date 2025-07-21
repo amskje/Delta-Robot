@@ -72,7 +72,11 @@ def inverse_kinematics(x0, y0, z0):
     if status != 0:
         return -1, None, None, None
 
-    return 0, theta1, theta2, theta3
+    if theta1 is None or theta2 is None or theta3 is None:
+        return 0, theta1, theta2, theta3
+    
+    # Adjust angles for limit offsets
+    return 0, theta1 - conf.ZERO_ANGLE1, theta2 - conf.ZERO_ANGLE2, theta3 - conf.ZERO_ANGLE3
 
 def plan_linear_move(
     x0: float, y0: float, z0: float,
