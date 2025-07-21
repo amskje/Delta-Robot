@@ -53,9 +53,7 @@ def single_arm_ik(x0, y0, z0):
 
     yj = (y1 - a * b - math.sqrt(d)) / (b * b + 1)
     zj = a + b * yj
-    theta = math.degrees(math.atan(-zj / (y1 - yj)))
-    if yj > y1:
-        theta += 180.0
+    theta = math.degrees(math.atan2(-zj, y1 - yj))
     return 0, theta
 
 def inverse_kinematics(x0, y0, z0):
