@@ -49,7 +49,16 @@ class_names = [
     "Japp", "Karamell", "Lakris", "Notti", "Toffee", "Eclairs"
 ]
 
+cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
+
 # === FUNCTIONS ===
+
+
+def get_camera():
+    global cap
+    if not cap.isOpened():
+        cap.open(gst_pipeline)
+    return cap
 
 def init_yolo(model_path="modules/best.pt"):
     """Initialize and return the YOLO model."""
@@ -61,11 +70,7 @@ def detect_target(model, target_class):
     as (class_name, x_cm, y_cm, confidence) tuples.
     """
 
-    cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
-    if not cap.isOpened():
-        print("Failed to open camera.")
-        return []
-
+    cap = get_camera()
 
     #Test
     for _ in range(40):
@@ -73,7 +78,6 @@ def detect_target(model, target_class):
     #Test
 
     ret, frame = cap.read()
-    cap.release()
 
     if not ret:
         print("Failed to capture frame.")
