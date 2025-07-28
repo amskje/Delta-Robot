@@ -42,7 +42,7 @@ reachable_y = []
 
 for x in xy_range:
     for y in xy_range:
-        status, t1, t2, t3 = kinematics_new.inverse_kinematics(x, y, -247)
+        status, t1, t2, t3 = kinematics_new.inverse_kinematics(x, y, best_z)  # Use the best Z value found
         if status != 0:
             continue
         if t1 is None or t2 is None or t3 is None:
