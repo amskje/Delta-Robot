@@ -6,17 +6,17 @@
 
 
 //Pin setup
-#define STEP1 2
-#define DIR1 3
-#define LIMIT1 8
+#define STEP1 5
+#define DIR1 10
+#define LIMIT1 3
 
-#define STEP2 4
-#define DIR2 5
-#define LIMIT2 9
+#define STEP2 7
+#define DIR2 8
+#define LIMIT2 2
 
 #define STEP3 6
-#define DIR3 7
-#define LIMIT3 11
+#define DIR3 9
+#define LIMIT3 4
 
 #define PUMP 12
 #define SENSOR A0
