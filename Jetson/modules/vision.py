@@ -1,6 +1,7 @@
 import cv2
 from ultralytics import YOLO
 from dataclasses import dataclass
+import numpy as np
 
 @dataclass
 class VisionConfig:
@@ -29,6 +30,10 @@ class VisionConfig:
         self.CM_TO_PIXEL_Y = self.FRAME_HEIGHT / self.SURFACE_HEIGHT_CM
         self.IMG_CENTER_X = self.FRAME_WIDTH // 2
         self.IMG_CENTER_Y = int((self.FRAME_HEIGHT // 2) - (self.CAM_TO_ROBOT_Y_OFFSET_CM / self.PIXEL_TO_CM_Y))
+        self.camera_cal = np.load("camera_calibration.npz")
+        self.mtx = self.camera_cal['camera_matrix']
+        self.dist = self.camera_cal['dist_coeffs']
+        self.H = np.load("homography_matrix.npy")
 
 def config() -> VisionConfig:
     return VisionConfig()
@@ -51,11 +56,16 @@ class_names = [
 
 # === FUNCTIONS ===
 
-def init_yolo(model_path="modules/best.pt"):
+def init_yolo(model_path="Jetson/modules/best.pt"):
     """Initialize and return the YOLO model."""
     return YOLO(model_path)
 
-def detect_target(model, target_class):
+def pixel_to_world(u, v, H):
+    pt = np.array([[[u, v]]], dtype=np.float32)
+    world_pt = cv2.perspectiveTransform(pt, H)
+    return world_pt[0][0]  # (x_mm, y_mm)
+
+def detect_target(model, target_class, mtx, dist, H):
     """
     Capture one frame and return all matching objects of the given class
     as (class_name, x_cm, y_cm, confidence) tuples.
@@ -79,7 +89,12 @@ def detect_target(model, target_class):
         print("Failed to capture frame.")
         return []
 
-    results = model(frame, conf=config().CONF_THRESHOLD)[0]
+    # Undistort
+    h, w = frame.shape[:2]
+    newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w,h), 1, (w,h))
+    undistorted = cv2.undistort(frame, mtx, dist, None, newcameramtx)
+
+    results = model(undistorted, conf=config().CONF_THRESHOLD)[0]
     matches = []
 
     for box in results.boxes:
@@ -94,10 +109,34 @@ def detect_target(model, target_class):
         x_pixel = int(box.xywh[0][0].item())
         y_pixel = int(box.xywh[0][1].item())
 
+        x_mm_old = (x_pixel - config().IMG_CENTER_X) * config().PIXEL_TO_CM_X * 10  # Convert to mm
+        y_mm_old = (y_pixel - config().IMG_CENTER_Y) * config().PIXEL_TO_CM_Y * 10  # Convert to mm
+
+        x_mm, y_mm = pixel_to_world(x_pixel, y_pixel, H)
+        print(f"Undistorted Real-world coords: X = {x_mm_old:.2f} mm, Y = {y_mm_old:.2f} mm")
+        print(f"H and undistorted Real-world coords: X = {x_mm:.2f} mm, Y = {y_mm:.2f} mm")
+
+        matches.append((class_name, x_mm, y_mm, conf))
+
+    # TESTING FOR Å SE FORSKJELL PÅ GAMMLE OG NYE, CALIBRERTE VERDIER
+    results_old = model(frame, conf=config().CONF_THRESHOLD)[0]
+
+    for box in results_old.boxes:
+        class_id = int(box.cls[0].item())
+        class_name = class_names[class_id]
+        conf = float(box.conf[0].item())
+
+        if class_name != target_class:
+            print("Mismatch class name")
+            continue
+
+        x_pixel = int(box.xywh[0][0].item())
+        y_pixel = int(box.xywh[0][1].item())
+
         x_mm = (x_pixel - config().IMG_CENTER_X) * config().PIXEL_TO_CM_X * 10  # Convert to mm
         y_mm = (y_pixel - config().IMG_CENTER_Y) * config().PIXEL_TO_CM_Y * 10  # Convert to mm
 
-        matches.append((class_name, x_mm, y_mm, conf))
+        print(f"Old Real-world coords: X = {x_mm:.2f} mm, Y = {y_mm:.2f} mm")
 
     if matches:
         cv2.imshow("Picture", frame)

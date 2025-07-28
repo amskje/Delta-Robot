@@ -5,9 +5,21 @@ import numpy as np
 pattern_size = (19, 11)   # 19 inner columns, 11 inner rows
 square_size = 12.0        # mm per square
 
+camera_cal = np.load("camera_calibration.npz")
+mtx = camera_cal['camera_matrix']
+dist = camera_cal['dist_coeffs']
+
 # Load image
-img = cv2.imread("chessboard_frame.jpg")
-gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+img = cv2.imread("test_scripts/Camera_calibration/calibration_images/chessboard_frame.jpg")
+if img is None:
+    print("❌ Image not loaded. Check the file path.")
+    exit()
+
+# ✅ UNDISTORT the image
+undistorted = cv2.undistort(img, mtx, dist)
+
+# Convert to grayscale
+gray = cv2.cvtColor(undistorted, cv2.COLOR_BGR2GRAY)
 
 # Find chessboard corners
 ret, corners = cv2.findChessboardCorners(gray, pattern_size)
@@ -27,8 +39,11 @@ cv2.waitKey(0)
 cv2.destroyAllWindows()
 
 # Generate world coordinates
+board_width = pattern_size[0] * square_size
+board_height = pattern_size[1] * square_size
+
 object_points = np.array([
-    [x * square_size, y * square_size]
+    [x * square_size - board_width / 2, y * square_size - board_height / 2]
     for y in range(pattern_size[1])
     for x in range(pattern_size[0])
 ], dtype=np.float32)
@@ -51,6 +66,6 @@ def pixel_to_world(u, v, H):
     return world_pt[0][0]  # (x_mm, y_mm)
 
 
-x_pixel, y_pixel = 312, 421  # From YOLO box center
+x_pixel, y_pixel = 320, 320  # From YOLO box center
 x_mm, y_mm = pixel_to_world(x_pixel, y_pixel, H)
 print(f"Real-world coords: X = {x_mm:.2f} mm, Y = {y_mm:.2f} mm")
