@@ -20,9 +20,9 @@ class KinematicsConfig:
         self.tan30 = math.tan(math.radians(30))
         self.cos120 = math.cos(math.radians(120))
         self.sin120 = math.sin(math.radians(120))
-        self.ZERO_ANGLE1 = 408 * 360 / self.pulses_per_rev
-        self.ZERO_ANGLE2 = 391 * 360 / self.pulses_per_rev
-        self.ZERO_ANGLE3 = 422 * 360 / self.pulses_per_rev
+        self.ZERO_ANGLE1 = 407 * 360 / self.pulses_per_rev
+        self.ZERO_ANGLE2 = 378 * 360 / self.pulses_per_rev
+        self.ZERO_ANGLE3 = 428 * 360 / self.pulses_per_rev
 
 def config() -> KinematicsConfig:
     return KinematicsConfig()
