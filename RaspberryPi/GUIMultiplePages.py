@@ -237,7 +237,7 @@ class AutomaticScreen(tk.Frame):
     def on_button_click(self, twist):
         if send_message:
             twist_publisher.send_twist(twist.name)
-        messagebox.showinfo("Valg", f"Du valgte {twist.name}")
+
 
 # --- Test Screen ---
 class TestScreen(tk.Frame):
