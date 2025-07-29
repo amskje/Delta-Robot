@@ -6,8 +6,8 @@ from dataclasses import dataclass
 class KinematicsConfig:
     # Base geometry [mm]
     r_base: float = 2*70.0
-    r_end: float = 2*24.0
-    l_biceps: float = 147.0
+    r_end: float = 2*25.0
+    l_biceps: float = 147.37
     l_forearm: float = 250.0
 
     # Stepper settings
