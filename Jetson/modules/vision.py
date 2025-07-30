@@ -63,7 +63,9 @@ def init_yolo(model_path="modules/best.pt"):
 def pixel_to_world(u, v, H):
     pt = np.array([[[u, v]]], dtype=np.float32)
     world_pt = cv2.perspectiveTransform(pt, H)
-    return world_pt[0][0]  # (x_mm, y_mm)
+    x_mm, y_mm = world_pt[0][0]
+    dx, dy = 5.975, -5.975
+    return x_mm - dx, y_mm - dy
 
 def detect_target(model, target_class, mtx, dist, H):
     """
@@ -95,6 +97,8 @@ def detect_target(model, target_class, mtx, dist, H):
     undistorted = cv2.undistort(frame, mtx, dist, None, newcameramtx)
 
     results = model(undistorted, conf=config().CONF_THRESHOLD)[0]
+    annotated_frame = results.plot()
+
     matches = []
 
     for box in results.boxes:
@@ -109,10 +113,19 @@ def detect_target(model, target_class, mtx, dist, H):
         x_pixel = int(box.xywh[0][0].item())
         y_pixel = int(box.xywh[0][1].item())
 
+        # Draw red center dot
+        cv2.circle(annotated_frame, (x_pixel, y_pixel), radius=5, color=(0, 0, 255), thickness=-1)
+
         x_mm_old = (x_pixel - config().IMG_CENTER_X) * config().PIXEL_TO_CM_X * 10  # Convert to mm
         y_mm_old = (y_pixel - config().IMG_CENTER_Y) * config().PIXEL_TO_CM_Y * 10  # Convert to mm
 
         x_mm, y_mm = pixel_to_world(x_pixel, y_pixel, H)
+
+        # Overlay coordinate text
+        coord_label = f"({x_mm:.1f}, {y_mm:.1f}) mm"
+        cv2.putText(annotated_frame, coord_label, (x_pixel + 5, y_pixel - 5),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+
         print(f"Undistorted Real-world coords: X = {x_mm_old:.2f} mm, Y = {y_mm_old:.2f} mm")
         print(f"H and undistorted Real-world coords: X = {x_mm:.2f} mm, Y = {y_mm:.2f} mm")
 
@@ -139,8 +152,8 @@ def detect_target(model, target_class, mtx, dist, H):
         print(f"Old Real-world coords: X = {x_mm:.2f} mm, Y = {y_mm:.2f} mm")
 
     if matches:
-        cv2.imshow("Picture", frame)
-        cv2.waitKey(5000)
+        cv2.imshow("Picture", annotated_frame)
+        cv2.waitKey(1000000)
         cv2.destroyWindow("Picture")
 
     return matches
