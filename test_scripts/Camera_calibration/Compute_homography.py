@@ -2,8 +2,8 @@ import cv2
 import numpy as np
 
 # Parameters
-pattern_size = (19, 11)   # 19 inner columns, 11 inner rows
-square_size = 12.0        # mm per square
+pattern_size = (11, 19)   # 19 inner columns, 11 inner rows
+square_size = 11.95       # mm per square
 
 camera_cal = np.load("camera_calibration.npz")
 mtx = camera_cal['camera_matrix']
@@ -43,10 +43,12 @@ board_width = pattern_size[0] * square_size
 board_height = pattern_size[1] * square_size
 
 object_points = np.array([
-    [x * square_size - board_width / 2, y * square_size - board_height / 2]
+    [-(y * square_size - board_height / 2),  # X axis: upward in image
+     x * square_size - board_width / 2]     # Y axis: rightward in image
     for y in range(pattern_size[1])
     for x in range(pattern_size[0])
 ], dtype=np.float32)
+
 
 # Compute homography
 H, status = cv2.findHomography(corners, object_points)
