@@ -184,6 +184,8 @@ class AutomaticScreen(tk.Frame):
         self.controller = controller
         self.loading_popup = None  # Track popup window
         self.loading_label = None
+        self.waiting_animation_running = False
+        self.dot_count = 0
 
         # Text in top left corner
         tk.Label(self, text="Auto", font=("Helvetica", 16, "bold"), fg="#cc0000", bg=BG_color).place(x=20, y=10)
@@ -278,26 +280,23 @@ class AutomaticScreen(tk.Frame):
         self.loading_popup.geometry(f"+{x}+{y}")
 
 
-        # Frame around the popup
-        border_frame = tk.Frame(self.loading_popup, bg="white", padx=2, pady=2)
-        border_frame.pack(expand=True, fill="both", padx=10, pady=10)
-
-        content_frame = tk.Frame(border_frame, bg=BG_color)
-        content_frame.pack(expand=True, fill="both")
-
         tk.Label(self.loading_popup,
                  text=f"Henter {twist_name}...",
                  font=("Helvetica", 18),
                  fg="white",
-                 bg=BG_color).pack(expand=True, pady=20)
+                 bg="#4c4c4c").pack(expand=True, pady=20)
 
         self.loading_label = tk.Label(self.loading_popup,
                                       text="Vennligst vent...",
                                       font=("Helvetica", 14),
                                       fg="white",
-                                      bg=BG_color)
+                                      bg="#4c4c4c")
         self.loading_label.pack()
 
+
+        self.waiting_animation_running = True
+        self.dot_count = 0
+        self.animate_dots()
 
         # Back/Abort button
         tk.Button(self.loading_popup,
@@ -320,6 +319,7 @@ class AutomaticScreen(tk.Frame):
 
     def update_loading_popup(self):
         if self.loading_popup:
+            self.waiting_animation_running = False  # stop dots
             self.loading_label.config(text="Twist plukket opp!")
             self.loading_popup.after(5000, self.close_loading_popup)  # Auto-close after 5 sec
 
@@ -331,8 +331,20 @@ class AutomaticScreen(tk.Frame):
     def abort_and_close_popup(self):
         if send_message:
             twist_publisher.send_twist("ABORT")
+        self.waiting_animation_running = False  # stop dots
         self.close_loading_popup()
         self.controller.show_frame(AutomaticScreen)
+
+    def animate_dots(self):
+        if not self.waiting_animation_running or not self.loading_label:
+            return
+
+        dots = "." * self.dot_count
+        self.loading_label.config(text=f"Vennligst vent{dots}")
+
+        self.dot_count = (self.dot_count + 1) % 4  # Cycles through 0,1,2,3
+        self.after(500, self.animate_dots)  # Call again after 500ms
+
 
 
 
