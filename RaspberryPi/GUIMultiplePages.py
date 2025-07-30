@@ -44,12 +44,24 @@ class TwistPublisher(Node):
     def __init__(self):
         super().__init__('twist_publisher')
         self.publisher_ = self.create_publisher(String, 'PI_command', 10)
+        self.subscription = self.create_subscription(
+            String,
+            'PI_feedback',
+            self.feedback_callback,
+            10
+        )
+        self.subscription  # prevent unused variable warning
+        self.gui_callback = None  # Set externally from GUI
 
     def send_twist(self, twist_name: str):
         msg = String()
         msg.data = twist_name
         self.publisher_.publish(msg)
         self.get_logger().info(f"Sent twist: {msg.data}")
+
+    def feedback_callback(self, msg: String):
+        if msg.data == "PICKEDUP" and self.gui_callback:
+            self.gui_callback()
 
 # --- App ---
 class App(tk.Tk):
@@ -170,6 +182,7 @@ class AutomaticScreen(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg=BG_color)
         self.controller = controller
+        self.loading_popup = None  # Track popup window
 
         # Text in top left corner
         tk.Label(self, text="Auto", font=("Helvetica", 16, "bold"), fg="#cc0000", bg=BG_color).place(x=20, y=10)
@@ -235,52 +248,56 @@ class AutomaticScreen(tk.Frame):
             **button_style
         ).pack(pady=20)
 
+        # Register GUI callback with ROS node
+        twist_publisher.gui_callback = self.twist_picked_up
+
+
 
     def on_button_click(self, twist):
         if send_message:
             twist_publisher.send_twist(twist.name)
+            self.show_loading_popup(twist.name)
 
 
-# --- Test Screen ---
-class TestScreen(tk.Frame):
-    def __init__(self, parent, controller):
+    def show_loading_popup(self, twist_name):
+        if self.loading_popup is not None:
+            return  # Already shown
 
-        super().__init__(parent, bg=BG_color)
-        self.controller = controller
+        self.loading_popup = tk.Toplevel(self)
+        self.loading_popup.title("Plukker Twist")
+        self.loading_popup.geometry("400x200")
+        self.loading_popup.configure(bg=BG_color)
+        self.loading_popup.transient(self)
+        self.loading_popup.grab_set()
 
-        # Text in top left corner
-        tk.Label(self, text="Test", font=("Helvetica", 16, "bold"), fg="#cc0000", bg=BG_color).place(x=20, y=10)
+        tk.Label(self.loading_popup,
+                 text=f"Henter {twist_name}...",
+                 font=("Helvetica", 18),
+                 fg="white",
+                 bg=BG_color).pack(expand=True, pady=20)
 
-        tk.Label(self, text="Velg en twist:", font=("Helvetica", 18), fg="white", bg=BG_color).place(x=300, y=30)
+        self.loading_label = tk.Label(self.loading_popup,
+                                      text="Vennligst vent...",
+                                      font=("Helvetica", 14),
+                                      fg="white",
+                                      bg=BG_color)
+        self.loading_label.pack()
 
-        self.images = []
-        image_files = [f"pictures/twist/{tw.name.lower()}.png" for tw in Twist]
+    def twist_picked_up(self):
+        # Called from ROS thread; use `after` to safely update GUI
+        self.after(0, self.update_loading_popup)
 
-        positions = [
-            (50, 100), (200, 100), (350, 100), (500, 100),
-            (50, 250), (200, 250), (350, 250), (500, 250),
-            (50, 400), (200, 400), (350, 400), (500, 400)
-        ]
+    def update_loading_popup(self):
+        if self.loading_popup:
+            self.loading_label.config(text="Twist plukket opp!")
+            self.loading_popup.after(2000, self.close_loading_popup)  # Auto-close after 2 sec
 
-        for i, twist in enumerate(Twist):
-            img = Image.open(image_files[i]).resize((100, 100))
-            photo = ImageTk.PhotoImage(img)
-            self.images.append(photo)
+    def close_loading_popup(self):
+        if self.loading_popup:
+            self.loading_popup.destroy()
+            self.loading_popup = None
 
-            btn = tk.Button(self, image=photo,
-                            command=lambda t=twist: self.on_button_click(t),
-                            bg='black', activebackground='black',
-                            borderwidth=0, highlightthickness=0, relief='flat')
-            btn.place(x=positions[i][0], y=positions[i][1])
-            btn.image = photo
 
-        tk.Button(self, text="Tilbake",
-                  command=lambda: controller.show_frame(StartScreen),
-                  **button_style).place(x=350, y=365)
-
-    def on_button_click(self, twist):
-        if send_message:
-            twist_publisher.send_twist(twist.name)
 
 # --- Main ---
 if __name__ == "__main__":
