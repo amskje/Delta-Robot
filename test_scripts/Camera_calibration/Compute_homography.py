@@ -52,7 +52,7 @@ object_points = np.array([
 H, status = cv2.findHomography(corners, object_points)
 print("✅ Homography matrix H:\n", H)
 
-np.save("homography_matrix.npy", H)
+np.save("homography_camera.npy", H)
 # Load it later:
 # H = np.load("homography_matrix.npy")
 
@@ -66,6 +66,6 @@ def pixel_to_world(u, v, H):
     return world_pt[0][0]  # (x_mm, y_mm)
 
 
-x_pixel, y_pixel = 320, 320  # From YOLO box center
+x_pixel, y_pixel = 600, 320  # From YOLO box center
 x_mm, y_mm = pixel_to_world(x_pixel, y_pixel, H)
 print(f"Real-world coords: X = {x_mm:.2f} mm, Y = {y_mm:.2f} mm")

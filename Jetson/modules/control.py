@@ -2,6 +2,9 @@ from . import comms
 from . import kinematics
 from typing import List, Tuple
 from dataclasses import dataclass
+import numpy as np
+import json
+import cv2
 
 HOME_X = 3.038
 HOME_Y = 0.1655
@@ -18,11 +21,23 @@ class ControlConfig:
 def config() -> ControlConfig:
     return ControlConfig()
 
-
 class DeltaRobotController:
     def __init__(self, serial_comm: comms.SerialComm):
         self.serial = serial_comm  # Instance of SerialComm
         self.current_pos = [HOME_X, HOME_Y, HOME_Z] # Track robot position in mm
+        with open('homography_ROBOT_WORLD.json', 'r') as file:
+            H_robot = json.load(file)
+
+        self.H_robot_inv = np.linalg.inv(H_robot)
+
+        print(H_robot)
+
+    
+    def correct_target(self, x_desired, y_desired):
+        """Transform a target point from real-world into robot coordinates"""
+        pt = np.array([[[x_desired, y_desired]]], dtype=np.float32)
+        corrected = cv2.perspectiveTransform(pt, self.H_robot_inv)
+        return corrected[0][0]
 
 
     def send_angles_sequence(self, angles_list, angles_down_list, down_included):
@@ -70,14 +85,17 @@ class DeltaRobotController:
         # === Phase 1: Plan path to pickup
         pickup_angles = []
         down_angles = []
-         
+
+        # Map robot coordinates to real world
+        x_corrected, y_corrected = self.correct_target(target_pos[0], target_pos[1])
+        
         kinematics.plan_linear_move(self.current_pos[0], self.current_pos[1], self.current_pos[2],
-                                    target_pos[0], target_pos[1], target_pos[2], pickup_angles, waypoints=config().WAYPOINTS)
+                                    x_corrected, y_corrected, target_pos[2], pickup_angles, waypoints=config().WAYPOINTS)
 
         #Pre calculated steps for moving down if twist is not picked up, maby change the number 25
         #kan kanskje sende den 6 cm ned, også i arduino code ta å bruke 1/3 av way punktene av gangen
-        kinematics.plan_linear_move(target_pos[0], target_pos[1], target_pos[2],
-                                    target_pos[0], target_pos[1], target_pos[2]+config().DOWN_MM, down_angles, waypoints=config().WAYPOINTS_DOWN)
+        kinematics.plan_linear_move(x_corrected, y_corrected, target_pos[2],
+                                    x_corrected, y_corrected, target_pos[2]-config().DOWN_MM, down_angles, waypoints=config().WAYPOINTS_DOWN)
 
 
 
@@ -94,16 +112,19 @@ class DeltaRobotController:
          #   print("[Error] Pickup not acknowledged.")
          #   return False
         
-        self.current_pos = list(target_pos) #husk, må gjøre slik at etter roboten har plukket opp må den vite akkuret hvor langt ned den har gått
+        self.current_pos = [x_corrected, y_corrected, target_pos[2]] #husk, må gjøre slik at etter roboten har plukket opp må den vite akkuret hvor langt ned den har gått
         
         print(f"[Control] Planning move to drop-off at {dropoff_pos}...")
 
         # === Phase 2: Plan path to drop-off
+
+        # Adjust dropoff pos with H
+        x_dropoff_corrected, y_dropoff_corrected = self.correct_target(dropoff_pos[0], dropoff_pos[1])
         
         dropoff_angles = []
         kinematics.plan_linear_move(
             *target_pos,
-            *dropoff_pos,
+            x_dropoff_corrected, y_dropoff_corrected, dropoff_pos[2],
             dropoff_angles,
             waypoints=config().WAYPOINTS
         )

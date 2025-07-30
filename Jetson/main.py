@@ -32,6 +32,7 @@ def main():
     serial = comms.SerialComm()
     controller = control.DeltaRobotController(serial)
     model = vision.init_yolo()
+    vision_conf = vision.config()
 
     # Initial state
     state = RobotState.IDLE
@@ -52,7 +53,7 @@ def main():
                 key = sys.stdin.readline().strip()
                 if key.lower() == 'd':
                     log("Keyboard input 'd' detected. Simulating 'daim' message.")
-                    order = 'Daim'
+                    order = 'Banan'
                     state = RobotState.DELIVERING
                     continue
 
@@ -75,7 +76,7 @@ def main():
 
             # Retry YOLO detection up to 15 times
             while not matches and retry_count < 15:
-                matches = vision.detect_target(model, order)
+                matches = vision.detect_target(model, order, vision_conf.mtx, vision_conf.dist, vision_conf.H)
                 
                 if not matches:
                     log(f"No target found on attempt {retry_count + 1}. Retrying...")
@@ -87,8 +88,8 @@ def main():
                 log(f"Target detected at x={target_x:.2f} cm, y={target_y:.2f} cm")
 
                 success = controller.twist_delivery(
-                    target_pos=(target_x, target_y, 250),
-                    dropoff_pos=(0, 0, 250)
+                    target_pos=(target_x, target_y, -296),
+                    dropoff_pos=(0, 0, -296)
                 )
 
                 state = RobotState.IDLE if success else RobotState.ERROR

@@ -69,7 +69,7 @@ real_coords = np.array([
 H, status = cv2.findHomography(robot_coords, real_coords)
 
 # Optional: save homography to file
-with open("homography_matrix.json", "w") as f:
+with open("homography_ROBOT_WORLD.json", "w") as f:
     json.dump(H.tolist(), f)
 
 print("Homography matrix:\n", H)
@@ -86,7 +86,7 @@ def correct_target(x_desired, y_desired, H_inv):
 H_inv = np.linalg.inv(H)
 
 # Example: you want to move to point (75, 25) in real-world space
-x_real, y_real = 75, 25
+x_real, y_real = 100, 100
 x_robot, y_robot = correct_target(x_real, y_real, H_inv)
 
 print(f"Move robot to: ({x_robot:.2f}, {y_robot:.2f}) to reach ({x_real}, {y_real})")

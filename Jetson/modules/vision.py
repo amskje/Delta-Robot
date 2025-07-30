@@ -33,7 +33,7 @@ class VisionConfig:
         self.camera_cal = np.load("camera_calibration.npz")
         self.mtx = self.camera_cal['camera_matrix']
         self.dist = self.camera_cal['dist_coeffs']
-        self.H = np.load("homography_matrix.npy")
+        self.H = np.load("homography_camera.npy")
 
 def config() -> VisionConfig:
     return VisionConfig()
@@ -56,7 +56,7 @@ class_names = [
 
 # === FUNCTIONS ===
 
-def init_yolo(model_path="Jetson/modules/best.pt"):
+def init_yolo(model_path="modules/best.pt"):
     """Initialize and return the YOLO model."""
     return YOLO(model_path)
 

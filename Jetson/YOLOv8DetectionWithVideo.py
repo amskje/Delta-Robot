@@ -1,6 +1,7 @@
 import cv2
 from ultralytics import YOLO
 
+
 # ==== CONFIGURATION ====
 FRAME_WIDTH = 640         # width of video feed in pixels
 FRAME_HEIGHT = 640        # height of video feed in pixels

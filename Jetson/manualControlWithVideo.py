@@ -22,6 +22,13 @@ visCFG = vision.config() # Configs from vision module
 # Global control flag
 running = True
 
+
+def correct_target(x_desired, y_desired, H_inv):
+    """Transform a target point from real-world into robot coordinates"""
+    pt = np.array([[[x_desired, y_desired]]], dtype=np.float32)
+    corrected = cv2.perspectiveTransform(pt, H_inv)
+    return corrected[0][0]
+
 # Main loop with functions from here and there
 def main():
     global running
@@ -59,6 +66,13 @@ def main():
     print("Enter coordinates as: X Y Z  (in mm)")
     print("Type 'q' to quit.\n")
 
+    with open('homography_ROBOT_WORLD.json', 'r') as file:
+            H_robot = json.load(file)
+
+    H_robot_inv = np.linalg.inv(H_robot)
+    
+
+
     while running:
         try:
             user_input = input("Enter target X Y Z: ").strip()
@@ -73,16 +87,19 @@ def main():
             print(f"Planning move to ({x}, {y}, {z}) mm...")
 
             angles = []
+
+            x_corrected, y_corrected = correct_target(x, y, H_robot_inv)
+
             kinematics.plan_linear_move(
                 current_position.x, current_position.y, current_position.z,
-                x, y, z,
+                x_corrected, y_corrected, z,
                 angles,
                 conCFG.WAYPOINTS
             )
 
             if angles:
                 comms.send_to_arduino(ser, angles)
-                current_position = kinematics.Position(x, y, z)
+                current_position = kinematics.Position(x_corrected, y_corrected, z)
             else:
                 print("No valid angles generated. Target might be unreachable.")
 
