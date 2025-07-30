@@ -53,7 +53,7 @@ def main():
                 key = sys.stdin.readline().strip()
                 if key.lower() == 'd':
                     log("Keyboard input 'd' detected. Simulating 'daim' message.")
-                    order = 'Banan'
+                    order = 'Daim'
                     state = RobotState.DELIVERING
                     continue
 
