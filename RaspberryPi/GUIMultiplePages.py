@@ -278,25 +278,20 @@ class AutomaticScreen(tk.Frame):
         self.loading_popup.geometry(f"+{x}+{y}")
 
 
-        # Frame around the popup
-        border_frame = tk.Frame(self.loading_popup, bg="white", padx=2, pady=2)
-        border_frame.pack(expand=True, fill="both", padx=10, pady=10)
-
-        content_frame = tk.Frame(border_frame, bg=BG_color)
-        content_frame.pack(expand=True, fill="both")
-
         tk.Label(self.loading_popup,
                  text=f"Henter {twist_name}...",
                  font=("Helvetica", 18),
                  fg="white",
-                 bg=BG_color).pack(expand=True, pady=20)
+                 bg=BG_color).pack(pady=( 0, 15))
 
         self.loading_label = tk.Label(self.loading_popup,
                                       text="Vennligst vent...",
                                       font=("Helvetica", 14),
                                       fg="white",
-                                      bg=BG_color)
-        self.loading_label.pack()
+                                      bg=BG_color,
+                                      wraplength=350,
+                                      justify="center")
+        self.loading_label.pack(pady=( 0, 20))
 
 
         # Back/Abort button
@@ -312,7 +307,7 @@ class AutomaticScreen(tk.Frame):
             highlightthickness=0,
             relief="flat",
             width=15,                   
-        ).pack(pady=10)
+        ).pack()
 
     def twist_picked_up(self):
         # Called from ROS thread; use `after` to safely update GUI
