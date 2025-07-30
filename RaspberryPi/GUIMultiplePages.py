@@ -38,6 +38,7 @@ class Twist(Enum):
     Toffee = 10
     Lakris = 11
     Banan = 12
+    Marsipan = 13
 
 # --- ROS Node ---
 class TwistPublisher(Node):
@@ -213,7 +214,7 @@ class AutomaticScreen(tk.Frame):
         # Create 4 columns and 3 rows that expand equally
         for col in range(4):
             grid_container.columnconfigure(col, weight=1)
-        for row in range(3):
+        for row in range(4):
             grid_container.rowconfigure(row, weight=1)
 
         self.images = []
