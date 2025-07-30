@@ -227,7 +227,7 @@ class AutomaticScreen(tk.Frame):
                     borderwidth=0,
                     highlightthickness=0,
                     relief='flat',
-                    activebackground='black'
+                    activebackground="#5F5D5D"
                 )
                 btn.image = photo
                 btn.grid(
@@ -267,7 +267,7 @@ class AutomaticScreen(tk.Frame):
         self.loading_popup = tk.Toplevel(self)
         self.loading_popup.title("Plukker Twist")
         self.loading_popup.geometry("400x200")
-        self.loading_popup.configure(bg=BG_color)
+        self.loading_popup.configure(bg="black")
         self.loading_popup.transient(self)
         self.loading_popup.grab_set()
 
@@ -293,9 +293,18 @@ class AutomaticScreen(tk.Frame):
 
         # Back/Abort button
         tk.Button(self.loading_popup,
-                  text="Tilbake (Avbryt)",
-                  command=self.abort_and_close_popup,
-                  **button_style).pack(pady=15)
+            text="Tilbake (Avbryt)",
+            command=self.abort_and_close_popup,
+            font=("Helvetica", 12),     # Smaller font
+            bg="#cc0000",
+            fg="white",
+            activebackground="#990000",
+            activeforeground="white",
+            borderwidth=0,
+            highlightthickness=0,
+            relief="flat",
+            width=15,                   # Optional: narrow width
+        ).pack(pady=10)
 
     def twist_picked_up(self):
         # Called from ROS thread; use `after` to safely update GUI
@@ -304,7 +313,7 @@ class AutomaticScreen(tk.Frame):
     def update_loading_popup(self):
         if self.loading_popup:
             self.loading_label.config(text="Twist plukket opp!")
-            self.loading_popup.after(2000, self.close_loading_popup)  # Auto-close after 2 sec
+            self.loading_popup.after(5000, self.close_loading_popup)  # Auto-close after 5 sec
 
     def close_loading_popup(self):
         if self.loading_popup:
