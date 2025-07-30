@@ -240,8 +240,7 @@ class AutomaticScreen(tk.Frame):
                     bg=BG_color,
                     borderwidth=0,
                     highlightthickness=0,
-                    relief='flat',
-                    activebackground="#5F5D5D"
+                    relief='flat'
                 )
                 btn.image = photo
                 btn.grid(
