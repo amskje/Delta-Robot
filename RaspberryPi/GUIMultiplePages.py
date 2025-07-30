@@ -183,6 +183,7 @@ class AutomaticScreen(tk.Frame):
         super().__init__(parent, bg=BG_color)
         self.controller = controller
         self.loading_popup = None  # Track popup window
+        self.loading_label = None
 
         # Text in top left corner
         tk.Label(self, text="Auto", font=("Helvetica", 16, "bold"), fg="#cc0000", bg=BG_color).place(x=20, y=10)
@@ -270,6 +271,12 @@ class AutomaticScreen(tk.Frame):
         self.loading_popup.transient(self)
         self.loading_popup.grab_set()
 
+        # Center popup on screen
+        self.update_idletasks()
+        x = (self.winfo_screenwidth() // 2) - (400 // 2)
+        y = (self.winfo_screenheight() // 2) - (200 // 2)
+        self.loading_popup.geometry(f"+{x}+{y}")
+
         tk.Label(self.loading_popup,
                  text=f"Henter {twist_name}...",
                  font=("Helvetica", 18),
@@ -282,6 +289,13 @@ class AutomaticScreen(tk.Frame):
                                       fg="white",
                                       bg=BG_color)
         self.loading_label.pack()
+
+
+        # Back/Abort button
+        tk.Button(self.loading_popup,
+                  text="Tilbake (Avbryt)",
+                  command=self.abort_and_close_popup,
+                  **button_style).pack(pady=15)
 
     def twist_picked_up(self):
         # Called from ROS thread; use `after` to safely update GUI
@@ -296,6 +310,12 @@ class AutomaticScreen(tk.Frame):
         if self.loading_popup:
             self.loading_popup.destroy()
             self.loading_popup = None
+
+    def abort_and_close_popup(self):
+        if send_message:
+            twist_publisher.send_twist("ABORT")
+        self.close_loading_popup()
+        self.controller.show_frame(AutomaticScreen)
 
 
 
