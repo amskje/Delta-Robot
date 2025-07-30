@@ -6,6 +6,8 @@ import time
 import threading
 import cv2
 from threading import Event
+import json
+import numpy as np
 
 # Importing custom modules
 import modules.comms as comms
@@ -53,6 +55,12 @@ def main():
         stop_event.set()
         video_thread.join()
         return
+
+    # Restart Arduino
+    ser.dtr = False
+    time.sleep(1)
+    ser.dtr = True
+    time.sleep(1)
 
     if not comms.wait_for_arduino_ready(ser):
         ser.close()
