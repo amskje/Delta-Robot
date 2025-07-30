@@ -51,17 +51,28 @@ class TwistPublisher(Node):
             10
         )
         self.subscription  # prevent unused variable warning
-        self.gui_callback = None  # Set externally from GUI
+        self.message_handlers = {}  # Set externally from GUI
 
-    def send_twist(self, twist_name: str):
+    def send_msg(self, message: str):
         msg = String()
-        msg.data = twist_name
+        msg.data = message
         self.publisher_.publish(msg)
-        self.get_logger().info(f"Sent twist: {msg.data}")
+        self.get_logger().info(f"Sent message: {msg.data}")
+    
+
 
     def feedback_callback(self, msg: String):
-        if msg.data == "PICKEDUP" and self.gui_callback:
-            self.gui_callback()
+        message = msg.data.strip()
+        self.get_logger().info(f"Received message: {message}")
+        handler = self.message_handlers.get(message)
+        if handler:
+            handler()
+        else:
+            self.get_logger().warn(f"No handler registered for message: {message}")
+
+    def register_handler(self, message: str, handler_func):
+        """ Register a handler for a specific message value. """
+        self.message_handlers[message] = handler_func
 
 # --- App ---
 class App(tk.Tk):
@@ -252,13 +263,14 @@ class AutomaticScreen(tk.Frame):
         ).pack(pady=20)
 
         # Register GUI callback with ROS node
-        twist_publisher.gui_callback = self.twist_picked_up
+        twist_publisher.register_handler("PICKEDUP", self.twist_picked_up)
+
 
 
 
     def on_button_click(self, twist):
         if send_message:
-            twist_publisher.send_twist(twist.name)
+            twist_publisher.send_msg(twist.name)
             self.show_loading_popup(twist.name)
 
 
@@ -281,7 +293,7 @@ class AutomaticScreen(tk.Frame):
 
 
         tk.Label(self.loading_popup,
-                 text=f"Henter {twist_name}...",
+                 text=f"Henter {twist_name}",
                  font=("Helvetica", 18),
                  fg="white",
                  bg="#4c4c4c").pack(expand=True, pady=20)
@@ -330,7 +342,7 @@ class AutomaticScreen(tk.Frame):
 
     def abort_and_close_popup(self):
         if send_message:
-            twist_publisher.send_twist("ABORT")
+            twist_publisher.send_msg("ABORT")
         self.waiting_animation_running = False  # stop dots
         self.close_loading_popup()
         self.controller.show_frame(AutomaticScreen)
