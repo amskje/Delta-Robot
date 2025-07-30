@@ -104,11 +104,11 @@ class StartScreen(tk.Frame):
         logo_img = Image.open("pictures/DRLogo.png")
         logo_img.thumbnail((400, 200), Image.Resampling.LANCZOS)
         self.logo_photo = ImageTk.PhotoImage(logo_img)
-        tk.Label(self, image=self.logo_photo, bg="black").pack(pady=(60, 40))
+        tk.Label(self, image=self.logo_photo, bg="BG_color").pack(pady=(60, 40))
 
-        tk.Label(self, text="Velg modus:", font=("Helvetica", 20), fg="white", bg="black").pack(pady=10)
+        tk.Label(self, text="Velg modus:", font=("Helvetica", 20), fg="white", bg="BG_color").pack(pady=10)
 
-        button_frame = tk.Frame(self, bg="black")
+        button_frame = tk.Frame(self, bg="BG_color")
         button_frame.pack(pady=(0, 40))
 
         tk.Button(button_frame, text="Manuell Modus",
@@ -118,11 +118,11 @@ class StartScreen(tk.Frame):
         tk.Button(button_frame, text="Automatisk Modus",
             command=lambda: controller.show_frame(AutomaticScreen),
             **button_style).grid(row=0, column=1, padx=20, pady=10, sticky="ew")
-
+        """"
         tk.Button(button_frame, text="Test Modus",
             command=lambda: controller.show_frame(TestScreen),
             **button_style).grid(row=0, column=2, padx=20, pady=10, sticky="ew")
-
+        """
 # --- Manual Screen ---
 class ManualScreen(tk.Frame):
 
@@ -131,9 +131,9 @@ class ManualScreen(tk.Frame):
         self.controller = controller
 
         # Text in top left corner
-        tk.Label(self, text="Manuell", font=("Helvetica", 16, "bold"), fg="#cc0000", bg="black").place(x=20, y=10)
+        tk.Label(self, text="Manuell", font=("Helvetica", 16, "bold"), fg="#cc0000", bg="BG_color").place(x=20, y=10)
 
-        center = tk.Frame(self, bg="black")
+        center = tk.Frame(self, bg="BG_color")
         center.place(relx=0.5, rely=0.5, anchor="center")
 
         tk.Button(center, text="↑", width=5,
@@ -172,12 +172,12 @@ class AutomaticScreen(tk.Frame):
         self.controller = controller
 
         # Text in top left corner
-        tk.Label(self, text="Auto", font=("Helvetica", 16, "bold"), fg="#cc0000", bg="black").place(x=20, y=10)
+        tk.Label(self, text="Auto", font=("Helvetica", 16, "bold"), fg="#cc0000", bg="BG_color").place(x=20, y=10)
 
-        tk.Label(self, text="Velg din Twist:", font=("Arial", 18), fg="white", bg="black").pack(pady=(20, 10))
+        tk.Label(self, text="Velg din Twist:", font=("Arial", 18), fg="white", bg="BG_color").pack(pady=(20, 10))
 
         # Container frame for the twist grid
-        grid_container = tk.Frame(self, bg="black", height=500)
+        grid_container = tk.Frame(self, bg="BG_color", height=500)
         grid_container.pack(padx=40, pady=(0, 20))
         grid_container.pack_propagate(False)
 
@@ -209,7 +209,7 @@ class AutomaticScreen(tk.Frame):
                     grid_container,
                     image=photo,
                     command=lambda t=twist: self.on_button_click(t),
-                    bg='black',
+                    bg='BG_color',
                     borderwidth=0,
                     highlightthickness=0,
                     relief='flat',
@@ -249,9 +249,9 @@ class TestScreen(tk.Frame):
         self.controller = controller
 
         # Text in top left corner
-        tk.Label(self, text="Test", font=("Helvetica", 16, "bold"), fg="#cc0000", bg="black").place(x=20, y=10)
+        tk.Label(self, text="Test", font=("Helvetica", 16, "bold"), fg="#cc0000", bg="BG_color").place(x=20, y=10)
 
-        tk.Label(self, text="Velg en twist:", font=("Helvetica", 18), fg="white", bg="black").place(x=300, y=30)
+        tk.Label(self, text="Velg en twist:", font=("Helvetica", 18), fg="white", bg="BG_color").place(x=300, y=30)
 
         self.images = []
         image_files = [f"pictures/twist/{tw.name.lower()}.png" for tw in Twist]
