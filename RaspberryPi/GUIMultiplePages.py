@@ -267,7 +267,7 @@ class AutomaticScreen(tk.Frame):
         self.loading_popup = tk.Toplevel(self)
         self.loading_popup.title("Plukker Twist")
         self.loading_popup.geometry("400x200")
-        self.loading_popup.configure(bg="black")
+        self.loading_popup.configure(bg="#6E686881")
         self.loading_popup.transient(self)
         self.loading_popup.grab_set()
 
@@ -276,6 +276,14 @@ class AutomaticScreen(tk.Frame):
         x = (self.winfo_screenwidth() // 2) - (400 // 2)
         y = (self.winfo_screenheight() // 2) - (200 // 2)
         self.loading_popup.geometry(f"+{x}+{y}")
+
+
+        # Frame around the popup
+        border_frame = tk.Frame(self.loading_popup, bg="white", padx=2, pady=2)
+        border_frame.pack(expand=True, fill="both", padx=10, pady=10)
+
+        content_frame = tk.Frame(border_frame, bg=BG_color)
+        content_frame.pack(expand=True, fill="both")
 
         tk.Label(self.loading_popup,
                  text=f"Henter {twist_name}...",
@@ -293,9 +301,9 @@ class AutomaticScreen(tk.Frame):
 
         # Back/Abort button
         tk.Button(self.loading_popup,
-            text="Tilbake (Avbryt)",
+            text="Avbryt",
             command=self.abort_and_close_popup,
-            font=("Helvetica", 12),     # Smaller font
+            font=("Helvetica", 12),     
             bg="#cc0000",
             fg="white",
             activebackground="#990000",
@@ -303,7 +311,7 @@ class AutomaticScreen(tk.Frame):
             borderwidth=0,
             highlightthickness=0,
             relief="flat",
-            width=15,                   # Optional: narrow width
+            width=15,                   
         ).pack(pady=10)
 
     def twist_picked_up(self):
