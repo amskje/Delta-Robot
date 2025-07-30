@@ -267,7 +267,7 @@ class AutomaticScreen(tk.Frame):
         self.loading_popup = tk.Toplevel(self)
         self.loading_popup.title("Plukker Twist")
         self.loading_popup.geometry("400x200")
-        self.loading_popup.configure(bg="#6E686881")
+        self.loading_popup.configure(bg="#4c4c4c")
         self.loading_popup.transient(self)
         self.loading_popup.grab_set()
 
