@@ -57,7 +57,7 @@ class App(tk.Tk):
         super().__init__()  # ❗️ must come first
 
         self.title("Delta Robot GUI")
-        self.configure(bg="BG_color")
+        self.configure(bg=BG_color)
 
         # ✅ Now we can safely get screen size
         screen_width = self.winfo_screenwidth()
@@ -71,7 +71,7 @@ class App(tk.Tk):
 
         self.bind("<Escape>", lambda event: self.quit())
 
-        container = tk.Frame(self, bg='BG_color')
+        container = tk.Frame(self, bg=BG_color)
         container.pack(fill="both", expand=True)
 
         self.frames = {}
@@ -90,7 +90,7 @@ class App(tk.Tk):
 # --- Start Screen ---
 class StartScreen(tk.Frame):
     def __init__(self, parent, controller):
-        super().__init__(parent, bg="BG_color")
+        super().__init__(parent, bg=BG_color)
         self.controller = controller
 
         tk.Button(
@@ -127,7 +127,7 @@ class StartScreen(tk.Frame):
 class ManualScreen(tk.Frame):
 
     def __init__(self, parent, controller):
-        super().__init__(parent, bg="BG_color")
+        super().__init__(parent, bg=BG_color)
         self.controller = controller
 
         # Text in top left corner
@@ -168,7 +168,7 @@ class ManualScreen(tk.Frame):
 class AutomaticScreen(tk.Frame):
 
     def __init__(self, parent, controller):
-        super().__init__(parent, bg="BG_color")
+        super().__init__(parent, bg=BG_color)
         self.controller = controller
 
         # Text in top left corner
@@ -245,7 +245,7 @@ class AutomaticScreen(tk.Frame):
 class TestScreen(tk.Frame):
     def __init__(self, parent, controller):
 
-        super().__init__(parent, bg="BG_color")
+        super().__init__(parent, bg=BG_color)
         self.controller = controller
 
         # Text in top left corner
