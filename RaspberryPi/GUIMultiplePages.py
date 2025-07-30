@@ -263,7 +263,7 @@ class AutomaticScreen(tk.Frame):
         ).pack(pady=20)
 
         # Register GUI callback with ROS node
-        twist_publisher.register_handler("PICKEDUP", self.twist_picked_up)
+        twist_publisher.register_handler("PICKED_UP", self.twist_picked_up)
 
 
 
