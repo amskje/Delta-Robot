@@ -248,7 +248,7 @@ class AutomaticScreen(tk.Frame):
                     row=i // 4,
                     column=i % 4,
                     padx=10,
-                    pady=10,
+                    pady=5,
                     sticky="nsew"
                 )
 
