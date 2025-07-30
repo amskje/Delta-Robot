@@ -199,19 +199,19 @@ class AutomaticScreen(tk.Frame):
         self.waiting_animation_running = False
         self.dot_count = 0
 
-        # Text in top left corner
+        # --- Top Label ---
         tk.Label(self, text="Auto", font=("Helvetica", 16, "bold"), fg="#cc0000", bg=BG_color).place(x=20, y=10)
-
         tk.Label(self, text="Velg din Twist:", font=("Arial", 18), fg="white", bg=BG_color).pack(pady=(20, 10))
 
-        # Container frame for the twist grid
-        grid_container = tk.Frame(self, bg=BG_color, height=500)
-        grid_container.pack(padx=40, pady=(0, 20))
-        grid_container.pack_propagate(False)
+        # --- Main layout frame ---
+        main_frame = tk.Frame(self, bg=BG_color)
+        main_frame.pack(fill="both", expand=True)
 
+        # --- Grid container ---
+        grid_container = tk.Frame(main_frame, bg=BG_color)
+        grid_container.pack(expand=True)  # Let it grow, but not push the button out
 
-
-        # Create 4 columns and 3 rows that expand equally
+        # 4 columns, 4 rows
         for col in range(4):
             grid_container.columnconfigure(col, weight=1)
         for row in range(4):
@@ -223,12 +223,7 @@ class AutomaticScreen(tk.Frame):
             try:
                 image_path = f"pictures/twist/{twist.name.lower()}.png"
                 img = Image.open(image_path)
-
-                # Larger image size
-                if twist == Twist.Notti:
-                    img.thumbnail((90, 90), Image.Resampling.LANCZOS)
-                else:
-                    img.thumbnail((130, 130), Image.Resampling.LANCZOS)
+                img.thumbnail((130, 130), Image.Resampling.LANCZOS)
 
                 photo = ImageTk.PhotoImage(img)
                 self.images.append(photo)
@@ -243,7 +238,6 @@ class AutomaticScreen(tk.Frame):
                     relief='flat',
                     activebackground="#5F5D5D"
                 )
-                btn.image = photo
                 btn.grid(
                     row=i // 4,
                     column=i % 4,
@@ -251,17 +245,16 @@ class AutomaticScreen(tk.Frame):
                     pady=10,
                     sticky="nsew"
                 )
-
             except Exception as e:
                 print(f"Failed to load {twist.name}: {e}")
 
-        # "Tilbake" button anchored at the bottom
+        # --- Tilbake button at bottom ---
         tk.Button(
             self,
             text="Tilbake",
             command=lambda: controller.show_frame(StartScreen),
             **button_style
-        ).pack(pady=20)
+        ).pack(side="bottom", pady=20)
 
         # Register GUI callback with ROS node
         twist_publisher.register_handler("PICKEDUP", self.twist_picked_up)
