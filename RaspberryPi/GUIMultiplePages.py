@@ -212,9 +212,9 @@ class AutomaticScreen(tk.Frame):
 
 
         # Create 4 columns and 3 rows that expand equally
-        for col in range(4):
+        for col in range(5):
             grid_container.columnconfigure(col, weight=1)
-        for row in range(4):
+        for row in range(3):
             grid_container.rowconfigure(row, weight=1)
 
         self.images = []
@@ -226,9 +226,9 @@ class AutomaticScreen(tk.Frame):
 
                 # Larger image size
                 if twist == Twist.Notti:
-                    img.thumbnail((70, 70), Image.Resampling.LANCZOS)
+                    img.thumbnail((80, 80), Image.Resampling.LANCZOS)
                 else:
-                    img.thumbnail((100, 100), Image.Resampling.LANCZOS)
+                    img.thumbnail((12, 120), Image.Resampling.LANCZOS)
 
                 photo = ImageTk.PhotoImage(img)
                 self.images.append(photo)
