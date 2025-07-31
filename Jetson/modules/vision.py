@@ -1,6 +1,6 @@
 import cv2
 from ultralytics import YOLO
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import numpy as np
 import threading
 
@@ -24,6 +24,10 @@ class VisionConfig:
     CM_TO_PIXEL_Y: float = None
     IMG_CENTER_X: int = None
     IMG_CENTER_Y: int = None
+
+    # Camera parameters
+    #latest_frame: np.ndarray = None
+    #frame_lock: threading.Lock = field(default_factory=threading.Lock)
 
     def __post_init__(self):
         # Calculate derived values
@@ -68,8 +72,9 @@ def start_camera_thread():
     cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
 
     if not cap.isOpened():
-        print("Faailed to open camera")
+        print("Failed to open camera")
         return
+
     def capture_loop():
         global latest_frame
         while True:
@@ -111,7 +116,7 @@ def detect_target(model, target_class, mtx, dist, H):
      #   print("Failed to open camera")
       #  return []
 
-    global latest_frame 
+    #global latest_frame 
     with frame_lock:
         if latest_frame is None:
             print("No frame avalible yet")

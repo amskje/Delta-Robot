@@ -49,7 +49,16 @@ def main():
     order = None
 
     log("System initialized. Entering main loop...")
-
+    """
+    controller.twist_delivery(
+                target_pos=(0, 0 , -305),
+                dropoff_pos=(0, 0 , -305), include_dropoff = False
+            )
+    controller.twist_delivery(
+                target_pos=(-120, 80 , -305),
+                dropoff_pos=(-120, 80 , -305), include_dropoff =False
+            )
+    """
     while rclpy.ok():
         ROS.spin_once(timeout_sec=0.1)
 
@@ -100,8 +109,8 @@ def main():
                 log(f"Target detected at x={target_x:.2f} cm, y={target_y:.2f} cm")
 
                 success = controller.twist_delivery(
-                    target_pos=(target_x, target_y, -296),
-                    dropoff_pos=(0, 0, -296)
+                    target_pos=(target_x, target_y, -305),
+                    dropoff_pos=(-120, 80, -305)
                 )
 
                 state = RobotState.IDLE if success else RobotState.ERROR
