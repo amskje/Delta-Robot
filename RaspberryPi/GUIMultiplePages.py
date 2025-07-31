@@ -238,6 +238,7 @@ class AutomaticScreen(tk.Frame):
                     image=photo,
                     command=lambda t=twist: self.on_button_click(t),
                     bg=BG_color,
+                    activebackground=BG_color,
                     borderwidth=0,
                     highlightthickness=0,
                     relief='flat'
