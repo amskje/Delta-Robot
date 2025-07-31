@@ -20,7 +20,7 @@ IMG_CENTER_Y = FRAME_HEIGHT // 2
 # Custom class names
 class_names = [
     "Banan", "Cocos", "Crisp", "Daim", "Fransk", "Golden",
-    "Japp", "karamell", "Lakris", "Notti", "Toffee", "Eclairs"
+    "Japp", "Karamell", "Lakris", "Notti", "Toffee", "Eclairs", "Marsipan"
 ]
 
 # Load YOLO model
@@ -54,7 +54,8 @@ while True:
         break
 
     # Run YOLO inference
-    results = model(frame, conf=CONF_THRESHOLD)[0]
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    results = model(frame_rgb, conf=CONF_THRESHOLD)[0]
     annotated_frame = results.plot()
 
     # Loop over detections
