@@ -162,9 +162,9 @@ class DeltaRobotController:
         move_angles = []
  
         kinematics.plan_linear_move(self.current_pos[0], self.current_pos[1], self.current_pos[2],
-                                    move_pos[0], move_pos[1], move_pos[2],move_angles, waypoints=config().WAYPOINTS)
+                                    move_pos[0], move_pos[1], move_pos[2], move_angles, waypoints=config().WAYPOINTS)
 
-        if not self.send_angles_sequence(move_pos, down_angles, down_included=False):
+        if not self.send_angles_sequence(move_angles, down_angles, down_included=False):
             return False
 
         self.current_pos = [move_pos[0], move_pos[1], move_pos[2]] 
