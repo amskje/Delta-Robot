@@ -14,7 +14,7 @@ class VisionConfig:
     SURFACE_WIDTH_CM: float = 29.6
     SURFACE_HEIGHT_CM: float = 29.6
     CAM_TO_ROBOT_Y_OFFSET_CM: float = 1.6
-    MODEL_PATH: str = "modules/best.pt"
+    MODEL_PATH: str = "modules/weightsV2.pt"
     CONF_THRESHOLD: float = 0.8
 
     # Derived parameters will be computed
@@ -93,7 +93,7 @@ def get_camera():
         cap.open(gst_pipeline)
     return cap 
 
-def init_yolo(model_path="modules/best.pt"):
+def init_yolo(model_path="modules/weightsV2.pt"):
     """Initialize and return the YOLO model."""
     return YOLO(model_path)
 
