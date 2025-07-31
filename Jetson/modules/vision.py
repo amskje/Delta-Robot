@@ -2,6 +2,9 @@ import cv2
 from ultralytics import YOLO
 from dataclasses import dataclass
 import numpy as np
+import threading
+
+import time
 
 @dataclass
 class VisionConfig:
@@ -54,9 +57,30 @@ class_names = [
     "Japp", "Karamell", "Lakris", "Notti", "Toffee", "Eclairs"
 ]
 
-cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
+#cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
+latest_frame = None
+frame_lock = threading.Lock()
 
 # === FUNCTIONS ===
+
+def start_camera_thread():
+    global latest_frame
+    cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
+
+    if not cap.isOpened():
+        print("Faailed to open camera")
+        return
+    def capture_loop():
+        global latest_frame
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                print("Faield to grab frame")
+                continue
+            with frame_lock:
+                latest_frame = frame.copy()
+    thread = threading.Thread(target=capture_loop, daemon=True)
+    thread.start()
 
 def get_camera():
     global cap
@@ -80,20 +104,39 @@ def detect_target(model, target_class, mtx, dist, H):
     Capture one frame and return all matching objects of the given class
     as (class_name, x_cm, y_cm, confidence) tuples.
     """
+    start = time.perf_counter()
 
-    cap = get_camera()
-    ret, frame = cap.read()
+    #cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
+    #if not cap.isOpened():
+     #   print("Failed to open camera")
+      #  return []
 
-    if not ret:
-        print("Failed to capture frame.")
-        return []
+    global latest_frame 
+    with frame_lock:
+        if latest_frame is None:
+            print("No frame avalible yet")
+            return[]
+        frame = latest_frame.copy()
+
+    #cap = get_camera()
+    #ret, frame = cap.read()
+    #cap.release()
+    print("frame capture time:", time.perf_counter()-start)
+
+    #if not ret:
+     #   print("Failed to capture frame.")
+      #  return []
 
     # Undistort
     h, w = frame.shape[:2]
     newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w,h), 1, (w,h))
     undistorted = cv2.undistort(frame, mtx, dist, None, newcameramtx)
 
+    start = time.perf_counter()
     results = model(undistorted, conf=config().CONF_THRESHOLD)[0]
+    print("YOLO inference time:", time.perf_counter()-start)
+
+ 
     annotated_frame = results.plot()
 
     matches = []

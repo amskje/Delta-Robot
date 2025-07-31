@@ -7,6 +7,9 @@ import modules.comms as comms
 import modules.control as control
 import modules.kinematics as kinematics
 
+
+import numpy as np
+
 #Teset, for middlertidig keyboard knapp d
 import sys
 import select
@@ -33,6 +36,13 @@ def main():
     controller = control.DeltaRobotController(serial)
     model = vision.init_yolo()
     vision_conf = vision.config()
+ 
+
+    #Warm-up YOLO model
+    dummy = np.zeros((640, 640, 3), dtype=np.uint8)
+    model(dummy)
+
+    vision.start_camera_thread()
 
     # Initial state
     state = RobotState.IDLE
@@ -45,6 +55,8 @@ def main():
 
         if state == RobotState.IDLE:
             log("Robot is idle. Waiting for commands...")
+
+            
 
             #Teset, for middlertidig keyboard knapp d
 
