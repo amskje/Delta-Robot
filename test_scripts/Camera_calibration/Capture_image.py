@@ -50,7 +50,7 @@ while True:
     cv2.imshow("Live", frame)
     key = cv2.waitKey(1)
     if key == ord('s'):  # Press 's' to save a frame for calibration
-        cv2.imwrite("test_scripts/Camera_calibration/calibration_images/chessboard_frame14.jpg", frame)
+        cv2.imwrite("test_scripts/Camera_calibration/calibration_images/chessboard_frame.jpg", frame)
         print("Saved chessboard image")
         break
 
