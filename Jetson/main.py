@@ -59,6 +59,10 @@ def main():
                 dropoff_pos=(-120, 80 , -305), include_dropoff =False
             )
     """
+
+    #controller.go_to_picture_pos(move_pos = (0, 0, -305))
+    #controller.go_to_picture_pos(move_pos = (-120, 80, -305))   
+
     while rclpy.ok():
         ROS.spin_once(timeout_sec=0.1)
 

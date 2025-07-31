@@ -15,7 +15,7 @@ class ControlConfig:
     # Base parameters
     WAYPOINTS: int = 5 # Minimum 2
     WAYPOINTS_DOWN: int = 5 #Minimum 2
-    DOWN_MM: int = 25 #Total mm robot can move down after hitting target pos
+    DOWN_MM: int = 32 #Total mm robot can move down after hitting target pos
     INITIAL_POSITION: kinematics.Position = kinematics.Position(HOME_X, HOME_Y, HOME_Z)  # Initial position after goHome()
 
 def config() -> ControlConfig:
@@ -147,73 +147,29 @@ class DeltaRobotController:
         return True
 
 
-    """
-    def go_to_picture_pos(self, down_center_pos: Tuple[float, float, float], picture_pos: Tuple[float, float, float]):
-    
+ 
+    def go_to_picture_pos(self, move_pos: Tuple[float, float, float]):
+        """
         Executes a full delivery sequence from current position to target, then drop-off.
         
         Args:
-            target_pos (List[int]): [x, y, z] coordinates of pickup target
-            dropoff_pos (List[int]): [x, y, z] coordinates of drop-off target
-    
-        print(f"[Control] Planning move to pickup at {target_pos}...")
+            move_pos (List[int]): [x, y, z] coordinates of point to move to
+        """
+        print(f"[Control] Planning move to pickup at {move_pos}...")
 
         # === Phase 1: Plan path to pickup
-        pickup_angles = []
-        down_angles = []
-
+        down_angles = (0,0,0)
+        move_angles = []
+ 
         kinematics.plan_linear_move(self.current_pos[0], self.current_pos[1], self.current_pos[2],
-                                    down_center_pos[0], down_center_pos[1], down_center_pos[2], pickup_angles, waypoints=config().WAYPOINTS)
+                                    move_pos[0], move_pos[1], move_pos[2],move_angles, waypoints=config().WAYPOINTS)
 
-        kinematics.plan_linear_move(down_center_pos[0], down_center_pos[1], down_center_pos[2],
-                                    picture_pos[], picture_pos[1], picture_pos[2], down_angles, waypoints=config().WAYPOINTS_DOWN)
-
-
-
-        #Her får man done for arduino hvis den har plukket opp twsiten
-        if not self.send_angles_sequence(pickup_angles, down_angles, down_included=True):
+        if not self.send_angles_sequence(move_pos, down_angles, down_included=False):
             return False
 
-        # === Pickup operation
-
-
-        #self.serial.send_message("PUMP_ON")
+        self.current_pos = [move_pos[0], move_pos[1], move_pos[2]] 
         
-        #if not self.serial.wait_for_ack("PICKED_UP"):
-         #   print("[Error] Pickup not acknowledged.")
-         #   return False
-        
-        self.current_pos = [x_corrected, y_corrected, target_pos[2]] 
-        
-        print(f"[Control] Planning move to drop-off at {dropoff_pos}...")
 
-        # === Phase 2: Plan path to drop-off
-
-        # Adjust dropoff pos with H
-        x_dropoff_corrected, y_dropoff_corrected = self.correct_target(dropoff_pos[0], dropoff_pos[1])
-        
-        if include_dropoff:
-            dropoff_angles = []
-            kinematics.plan_linear_move(
-                *target_pos,
-                x_dropoff_corrected, y_dropoff_corrected, dropoff_pos[2],
-                dropoff_angles,
-                waypoints=config().WAYPOINTS
-            )
-
-
-        # === Release
-        #self.serial.send_message("PUMP_OFF")
-        self.serial.send_message("DROPP")
-
-
-        if not self.send_angles_sequence(dropoff_angles, [], down_included=False):
-            return False
-        
-      
-    
-        # Update robot state
-        self.current_pos = list(dropoff_pos)
-        print("[Control] Delivery complete.")
+        print("[Control] Move complete.")
         return True
-        """
+        
