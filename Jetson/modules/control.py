@@ -143,6 +143,6 @@ class DeltaRobotController:
         
     
         # Update robot state
-        self.current_pos = list(dropoff_pos)
+        self.current_pos = [x_dropoff_corrected, y_dropoff_corrected, dropoff_pos[2]]
         print("[Control] Delivery complete.")
         return True
