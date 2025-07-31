@@ -52,6 +52,7 @@ float maxAcceleration = 1500.0;//2000
 int positions[MAX_WAYPOINTS][3];
 int waypoint_count = 0;
 int current_index = 0;
+int lookahead_threshold = 20;
 
 //Move down set up
 #define MAX_PICKDOWN 5
@@ -337,15 +338,24 @@ void loop() {
     if (motorsRunning()) {
       checkLimitSwitches();
       steppers.run();
+      
+      if (motor1.distanceToGo() < lookahead_threshold &&
+        motor2.distanceToGo() < lookahead_threshold &&
+        motor3.distanceToGo() < lookahead_threshold &&
+        current_index < waypoint_count) {
+
+        moveToPosition(current_index++, positions);
+      }
     } 
-    else if (current_index < waypoint_count) {
-      moveToPosition(current_index++, positions);
-    } 
+    
     else if ((current_index_down < pickdown_count) && (current_index >= waypoint_count)) {
       digitalWrite(PUMP, HIGH);
 
       if (checkSensor()){
         current_index_down = pickdown_count;
+
+        moveToPosition(positions.size() - 1, positions);
+
         Serial.println("PICKED_UP");
       } else {
           delay(pickupPauseTime);
