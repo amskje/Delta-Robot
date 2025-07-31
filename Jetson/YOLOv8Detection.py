@@ -11,7 +11,7 @@ FRAME_HEIGHT = 640
 SURFACE_WIDTH_CM = 29.6
 SURFACE_HEIGHT_CM = 29.6
 CONF_THRESHOLD = 0.5
-MODEL_PATH = "best.pt"
+MODEL_PATH = "weightsV2.pt"
 SEND_FIRST_ONLY = True  # Only send one candy per frame
 SERIAL_TOPIC = 'arduino_command'
 # ========================
