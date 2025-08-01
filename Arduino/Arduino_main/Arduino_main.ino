@@ -42,20 +42,21 @@ AccelStepper motor3(AccelStepper::DRIVER, STEP3, DIR3);
 
 MultiStepper steppers;
                   
-float baseSpeed = 1500.0; // max speed for longest-moving motor 2000
-float minSpeed = 500.0;//1000
-float maxSpeed = 1500.0;//4000
-float maxAcceleration = 1500.0;//2000
+float pickupSpeed = 300.0; 
+float minSpeed = 500.0;
+float maxSpeed = 2500.0;
+float maxAcceleration = 1500.0;
 
 //Move to target setup
-#define MAX_WAYPOINTS 10
+#define MAX_WAYPOINTS 100
 int positions[MAX_WAYPOINTS][3];
 int waypoint_count = 0;
 int current_index = 0;
-int lookahead_threshold = 20;
+int lookahead_threshold = 50;
+int lookahead_threshold_pick = 1;
 
 //Move down set up
-#define MAX_PICKDOWN 5
+#define MAX_PICKDOWN 10
 int pickdown_positions[MAX_PICKDOWN][3];
 int pickdown_count = 0;
 int current_index_down = 0;
@@ -65,7 +66,7 @@ int pickupPauseTime = 100;
 //Pressure sensor set up
 const float R = 250.0;
 const float Vcc = 5.0; //Arduino ref voltage
-const float pickupThreshold = 0.7;  // Pressure below this means candy is picked
+const float pickupThreshold = 0.8;  // Pressure below this means candy is picked
 const int maxPickupTries = 3;
 
 // Debounce set up
@@ -292,6 +293,9 @@ void setup() {
   pinMode(LIMIT3, INPUT_PULLUP);
   pinMode(PUMP, OUTPUT);
 
+  pinMode(13, OUTPUT); //LED onboard
+  digitalWrite(13, LOW);  // Turn LED on
+
   motor1.setMaxSpeed(maxSpeed);
   motor2.setMaxSpeed(maxSpeed);
   motor3.setMaxSpeed(maxSpeed);
@@ -316,68 +320,124 @@ void loop() {
   readSerialMessage();
 
   switch (currentState) {
+    
   case IDLE:
+    digitalWrite(13, LOW);  // Turn LED off
 
     if (reset) {
       reset = false;
       clearWaypoints();
     }
     break;
+  
 
-  case RUNNING:
-    if (abortRequested) {
-      stopAllMotors();
-      reset = true;
-      currentState = IDLE;
-      abortRequested = false;
-      goHome3();
-      Serial.println("ABORTED");
+  case PICKING_UP:
+
+    //TODO: Kanskje kjøre saktere her?
+
+    digitalWrite(PUMP, HIGH);
+    if (checkSensor()){
+      digitalWrite(13, HIGH);  // Turn LED on
+
+      current_index_down = pickdown_count;
+
+      if (waypoint_count > 0) {
+        motor1.setMaxSpeed(maxSpeed);
+        motor2.setMaxSpeed(maxSpeed);
+        motor3.setMaxSpeed(maxSpeed);
+        moveToPosition(waypoint_count - 1, positions);
+      }
+      currentState = RUNNING;
+
+      Serial.println("PICKED_UP");
       break;
+
     }
     
-    if (motorsRunning()) {
-      checkLimitSwitches();
-      steppers.run();
-      
-      if (motor1.distanceToGo() < lookahead_threshold &&
-        motor2.distanceToGo() < lookahead_threshold &&
-        motor3.distanceToGo() < lookahead_threshold &&
-        current_index < waypoint_count) {
+    if (current_index_down < pickdown_count) {
+      if (motor1.distanceToGo() == 0 &&
+          motor2.distanceToGo() == 0 &&
+          motor3.distanceToGo() == 0) {
 
-        moveToPosition(current_index++, positions);
+            delay(100);
+
+            moveToPosition(current_index_down, pickdown_positions);
+            current_index_down++;
       }
-    } 
-    
-    else if ((current_index_down < pickdown_count) && (current_index >= waypoint_count)) {
-      digitalWrite(PUMP, HIGH);
+    } else if (current_index_down == pickdown_count) {
+      if (waypoint_count > 0) {
+        motor1.setMaxSpeed(maxSpeed);
+        motor2.setMaxSpeed(maxSpeed);
+        motor3.setMaxSpeed(maxSpeed);
+        moveToPosition(waypoint_count - 1, positions);
+      }
 
-      if (checkSensor()){
-        current_index_down = pickdown_count;
+      Serial.println("NOT_PICKED_UP");
+      current_index_down++;  // prevents repeating this block
+      currentState = RUNNING;
+    }
+    break;
 
-        moveToPosition(positions.size() - 1, positions);
 
-        Serial.println("PICKED_UP");
-      } else {
-          delay(pickupPauseTime);
-          moveToPosition(current_index_down, pickdown_positions);
-          current_index_down++;
+case RUNNING:
+  if (abortRequested) {
+    stopAllMotors();
+    reset = true;
+    currentState = IDLE;
+    abortRequested = false;
+    goHome3();
+    Serial.println("ABORTED");
+    break;
+  }
 
-          if (current_index_down == pickdown_count){
-            Serial.println("NOT_PICKED_UP");
-          }
-        } 
+  // ───── LOOKAHEAD for all but the last waypoint ─────
+  if (current_index < waypoint_count &&
+      motor1.distanceToGo() < lookahead_threshold &&
+      motor2.distanceToGo() < lookahead_threshold &&
+      motor3.distanceToGo() < lookahead_threshold) {
+
+    moveToPosition(current_index++, positions);
+  }
+
+  // ───── All Waypoints Done ─────
+  else if (current_index == waypoint_count &&
+           motor1.distanceToGo() == 0 &&
+           motor2.distanceToGo() == 0 &&
+           motor3.distanceToGo() == 0) {
+
+    if (current_index_down < pickdown_count) {
+      currentState = PICKING_UP;
+      motor1.setMaxSpeed(pickupSpeed);
+      motor2.setMaxSpeed(pickupSpeed);
+      motor3.setMaxSpeed(pickupSpeed);
     }
     else {
       if (dropoffPlanned) {
-        digitalWrite(PUMP, LOW);  
-        //Serial.println("TWIST_FOUND");
-        dropoffPlanned = false;   
+        digitalWrite(PUMP, LOW);
+        dropoffPlanned = false;
       }
 
       Serial.println("DONE");
       reset = true;
       currentState = IDLE;
     }
+  }
+
+  break;
+
+
+  // ───── UNKNOWN STATE ─────
+  default:
+    Serial.println("Unknown state!");
+    currentState = IDLE;
     break;
   }
+
+
+
+  if (motorsRunning()) {
+    checkLimitSwitches();
+  }
+
+  steppers.run();
 }
