@@ -42,9 +42,9 @@ AccelStepper motor3(AccelStepper::DRIVER, STEP3, DIR3);
 
 MultiStepper steppers;
                   
-float pickupSpeed = 300.0; 
-float minSpeed = 500.0;
-float maxSpeed = 2500.0;
+float pickupSpeed = 800.0; 
+float minSpeed = 50.0;
+float maxSpeed = 2000.0;
 float maxAcceleration = 1500.0;
 
 //Move to target setup
@@ -53,7 +53,7 @@ int positions[MAX_WAYPOINTS][3];
 int waypoint_count = 0;
 int current_index = 0;
 int lookahead_threshold = 50;
-int lookahead_threshold_pick = 1;
+int lookahead_threshold_pick = 5;
 
 //Move down set up
 #define MAX_PICKDOWN 10
@@ -66,7 +66,7 @@ int pickupPauseTime = 100;
 //Pressure sensor set up
 const float R = 250.0;
 const float Vcc = 5.0; //Arduino ref voltage
-const float pickupThreshold = 0.8;  // Pressure below this means candy is picked
+const float pickupThreshold = 0.7;  // Pressure below this means candy is picked
 const int maxPickupTries = 3;
 
 // Debounce set up
@@ -333,18 +333,19 @@ void loop() {
 
   case PICKING_UP:
 
-    //TODO: Kanskje kjøre saktere her?
-
     digitalWrite(PUMP, HIGH);
     if (checkSensor()){
       digitalWrite(13, HIGH);  // Turn LED on
 
+      stopAllMotors();
+      delay(300);
+
       current_index_down = pickdown_count;
 
       if (waypoint_count > 0) {
-        motor1.setMaxSpeed(maxSpeed);
-        motor2.setMaxSpeed(maxSpeed);
-        motor3.setMaxSpeed(maxSpeed);
+        motor1.setMaxSpeed(maxSpeed/2);  // Move up at halv speed
+        motor2.setMaxSpeed(maxSpeed/2);
+        motor3.setMaxSpeed(maxSpeed/2);
         moveToPosition(waypoint_count - 1, positions);
       }
       currentState = RUNNING;
@@ -355,14 +356,17 @@ void loop() {
     }
     
     if (current_index_down < pickdown_count) {
-      if (motor1.distanceToGo() == 0 &&
-          motor2.distanceToGo() == 0 &&
-          motor3.distanceToGo() == 0) {
+      if (motor1.distanceToGo() < lookahead_threshold_pick &&
+          motor2.distanceToGo() < lookahead_threshold_pick &&
+          motor3.distanceToGo() < lookahead_threshold_pick) {
 
-            delay(100);
+          //delay(100);
 
-            moveToPosition(current_index_down, pickdown_positions);
-            current_index_down++;
+          motor1.setMaxSpeed(max(pickupSpeed - current_index_down*100, minSpeed));
+          motor2.setMaxSpeed(max(pickupSpeed - current_index_down*100, minSpeed));
+          motor3.setMaxSpeed(max(pickupSpeed - current_index_down*100, minSpeed));
+
+          moveToPosition(current_index_down++, pickdown_positions);
       }
     } else if (current_index_down == pickdown_count) {
       if (waypoint_count > 0) {
