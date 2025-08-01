@@ -360,8 +360,6 @@ void loop() {
           motor2.distanceToGo() < lookahead_threshold_pick &&
           motor3.distanceToGo() < lookahead_threshold_pick) {
 
-          //delay(100);
-
           motor1.setMaxSpeed(max(pickupSpeed - current_index_down*100, minSpeed));
           motor2.setMaxSpeed(max(pickupSpeed - current_index_down*100, minSpeed));
           motor3.setMaxSpeed(max(pickupSpeed - current_index_down*100, minSpeed));
@@ -392,6 +390,13 @@ case RUNNING:
     goHome3();
     Serial.println("ABORTED");
     break;
+  }
+
+  // Check if the target is dropped
+  if (dropoffPlanned && !checkSensor()) {
+    Serial.println("DROPPED");
+    reset = true;
+    currentState = IDLE;
   }
 
   // ───── LOOKAHEAD for all but the last waypoint ─────
