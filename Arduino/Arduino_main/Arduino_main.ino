@@ -61,13 +61,12 @@ int pickdown_positions[MAX_PICKDOWN][3];
 int pickdown_count = 0;
 int current_index_down = 0;
 bool receivingPickdown = false;
-int pickupPauseTime = 100;
+int pickupPauseTime = 300;
 
 //Pressure sensor set up
 const float R = 250.0;
 const float Vcc = 5.0; //Arduino ref voltage
 const float pickupThreshold = 0.7;  // Pressure below this means candy is picked
-const int maxPickupTries = 3;
 
 // Debounce set up
 const unsigned long debounceDelay = 30;  // ms
@@ -338,7 +337,7 @@ void loop() {
       digitalWrite(13, HIGH);  // Turn LED on
 
       stopAllMotors();
-      delay(300);
+      delay(pickupPauseTime);
 
       current_index_down = pickdown_count;
 
