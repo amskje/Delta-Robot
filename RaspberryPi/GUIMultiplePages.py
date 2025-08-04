@@ -14,11 +14,22 @@ import sys
 LOCKFILE = "/tmp/delta_gui.lock"
 
 if os.path.exists(LOCKFILE):
-    print("[ERROR] GUI already running. Exiting.")
-    sys.exit(1)
+    try:
+        with open(LOCKFILE) as f:
+            pid = int(f.read())
+        os.kill(pid, 0)  # raises OSError if PID does not exist
+        print(f"[ERROR] GUI already running with PID {pid}")
+        sys.exit(1)
+    except Exception:
+        print("Stale lockfile, continuing...")
 
-with open(LOCKFILE, "w") as f:
-    f.write(str(os.getpid()))
+
+with open(LOCKFILE) as f:
+    pid = int(f.read())
+    if os.path.exists(f"/proc/{pid}"):
+        print(f"[ERROR] GUI already running with PID {pid}. Exiting.")
+        sys.exit(1)
+
 
 with open("/tmp/gui_launch.log", "a") as f:
     f.write(f"GUI started at PID {os.getpid()}\n")
