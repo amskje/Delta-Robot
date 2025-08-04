@@ -8,6 +8,23 @@ from rclpy.node import Node
 from std_msgs.msg import String
 import threading
 
+import os
+import sys
+
+LOCKFILE = "/tmp/delta_gui.lock"
+
+if os.path.exists(LOCKFILE):
+    print("[ERROR] GUI already running. Exiting.")
+    sys.exit(1)
+
+with open(LOCKFILE, "w") as f:
+    f.write(str(os.getpid()))
+
+with open("/tmp/gui_launch.log", "a") as f:
+    f.write(f"GUI started at PID {os.getpid()}\n")
+
+
+
 # --- Global Style ---
 button_style = {
     "bg": "#cc0000",                 # Red
@@ -77,7 +94,7 @@ class TwistPublisher(Node):
 
 # --- App ---
 class App(tk.Tk):
-    def __init__(self, twist_publisher):
+    def __init__(self):
         super().__init__()  # ❗️ must come first
 
         self.title("Delta Robot GUI")
@@ -101,7 +118,7 @@ class App(tk.Tk):
         self.frames = {}
 
         for F in (StartScreen, ManualScreen, AutomaticScreen):
-            frame = F(container, self, self.twist_publisher)
+            frame = F(container, self)
             self.frames[F] = frame
             frame.place(relwidth=1, relheight=1)
 
@@ -191,15 +208,13 @@ class ManualScreen(tk.Frame):
 # --- Automatic Screen ---
 class AutomaticScreen(tk.Frame):
 
-    def __init__(self, parent, controller, twist_publisher):
+    def __init__(self, parent, controller):
         super().__init__(parent, bg=BG_color)
         self.controller = controller
         self.loading_popup = None  # Track popup window
         self.loading_label = None
         self.waiting_animation_running = False
         self.dot_count = 0
-
-        self.twist_publisher = twist_publisher
 
         # Text in top left corner
         tk.Label(self, text="Auto", font=("Helvetica", 16, "bold"), fg="#cc0000", bg=BG_color).place(x=20, y=10)
@@ -273,7 +288,7 @@ class AutomaticScreen(tk.Frame):
 
     def on_button_click(self, twist):
         if send_message:
-            self.twist_publisher.send_msg(twist.name)
+            twist_publisher.send_msg(twist.name)
             self.show_loading_popup(twist.name)
 
 
@@ -345,7 +360,7 @@ class AutomaticScreen(tk.Frame):
 
     def abort_and_close_popup(self):
         if send_message:
-            self.twist_publisher.send_msg("ABORT")
+            twist_publisher.send_msg("ABORT")
         self.waiting_animation_running = False  # stop dots
         self.close_loading_popup()
         self.controller.show_frame(AutomaticScreen)
@@ -370,5 +385,7 @@ if __name__ == "__main__":
         twist_publisher = TwistPublisher()
         threading.Thread(target=rclpy.spin, args=(twist_publisher,), daemon=True).start()
 
-    app = App(twist_publisher)
+    app = App()
     app.mainloop()
+
+os.remove(LOCKFILE)
