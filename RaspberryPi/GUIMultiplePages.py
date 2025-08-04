@@ -345,7 +345,7 @@ class AutomaticScreen(tk.Frame):
 
     def abort_and_close_popup(self):
         if send_message:
-            twist_publisher.send_msg("ABORT")
+            self.twist_publisher.send_msg("ABORT")
         self.waiting_animation_running = False  # stop dots
         self.close_loading_popup()
         self.controller.show_frame(AutomaticScreen)
