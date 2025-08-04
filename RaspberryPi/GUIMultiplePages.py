@@ -1,3 +1,4 @@
+
 import tkinter as tk
 from PIL import Image, ImageTk
 from enum import Enum
@@ -7,35 +8,6 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 import threading
-
-import os
-import sys
-
-
-import fcntl
-
-sys.stdout = open("/tmp/gui_stdout.log", "a")
-sys.stderr = open("/tmp/gui_stderr.log", "a")
-print(f"[START] GUI launching at {os.getpid()}")
-
-
-LOCKFILE = "/tmp/delta_gui.lock"
-
-
-try:
-    lock_fd = os.open(LOCKFILE, os.O_CREAT | os.O_RDWR)
-    fcntl.lockf(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    os.write(lock_fd, str(os.getpid()).encode())
-except OSError:
-    print("[ERROR] GUI is already running or lockfile in use.")
-    sys.exit(1)
-
-
-
-with open("/tmp/gui_launch.log", "a") as f:
-    f.write(f"GUI started at PID {os.getpid()}\n")
-
-
 
 # --- Global Style ---
 button_style = {
@@ -392,34 +364,10 @@ class AutomaticScreen(tk.Frame):
 
 # --- Main ---
 if __name__ == "__main__":
-
-    def ros_spin_thread():
-        time.sleep(1)  # Give system time to fully init
-        try:
-            print("[ROS] Starting spin")
-            rclpy.spin(twist_publisher)
-            print("[ROS] Spin finished")
-        except Exception as e:
-            print(f"[ROS] Spin error: {e}")
-
-    twist_publisher = None
-
-
     if send_message:
         rclpy.init()
         twist_publisher = TwistPublisher()
-        print("[ROS] Node initialized")
+        threading.Thread(target=rclpy.spin, args=(twist_publisher,), daemon=True).start()
 
-        threading.Thread(target=ros_spin_thread, daemon=True).start()
-
-
-    try:
-        root = tk.Tk()
-        root.destroy()
-    except tk.TclError as e:
-        print(f"[ERROR] Could not open Tk window: {e}")
-        sys.exit(1)
     app = App()
     app.mainloop()
-
-os.remove(LOCKFILE)
