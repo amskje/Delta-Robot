@@ -392,10 +392,25 @@ class AutomaticScreen(tk.Frame):
 
 # --- Main ---
 if __name__ == "__main__":
+
+    def ros_spin_thread():
+        time.sleep(1)  # Give system time to fully init
+        try:
+            print("[ROS] Starting spin")
+            rclpy.spin(twist_publisher)
+            print("[ROS] Spin finished")
+        except Exception as e:
+            print(f"[ROS] Spin error: {e}")
+
+    twist_publisher = None
+
+
     if send_message:
         rclpy.init()
         twist_publisher = TwistPublisher()
-        threading.Thread(target=rclpy.spin, args=(twist_publisher,), daemon=True).start()
+        print("[ROS] Node initialized")
+
+        threading.Thread(target=ros_spin_thread, daemon=True).start()
 
 
     try:
