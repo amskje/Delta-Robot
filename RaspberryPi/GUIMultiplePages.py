@@ -77,7 +77,7 @@ class TwistPublisher(Node):
 
 # --- App ---
 class App(tk.Tk):
-    def __init__(self):
+    def __init__(self, twist_publisher):
         super().__init__()  # ❗️ must come first
 
         self.title("Delta Robot GUI")
@@ -101,7 +101,7 @@ class App(tk.Tk):
         self.frames = {}
 
         for F in (StartScreen, ManualScreen, AutomaticScreen):
-            frame = F(container, self, twist_publisher)
+            frame = F(container, self, self.twist_publisher)
             self.frames[F] = frame
             frame.place(relwidth=1, relheight=1)
 
@@ -370,5 +370,5 @@ if __name__ == "__main__":
         twist_publisher = TwistPublisher()
         threading.Thread(target=rclpy.spin, args=(twist_publisher,), daemon=True).start()
 
-    app = App()
+    app = App(twist_publisher)
     app.mainloop()
