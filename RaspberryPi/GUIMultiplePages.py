@@ -11,24 +11,25 @@ import threading
 import os
 import sys
 
+
+import fcntl
+
+sys.stdout = open("/tmp/gui_stdout.log", "a")
+sys.stderr = open("/tmp/gui_stderr.log", "a")
+print(f"[START] GUI launching at {os.getpid()}")
+
+
 LOCKFILE = "/tmp/delta_gui.lock"
 
-if os.path.exists(LOCKFILE):
-    try:
-        with open(LOCKFILE) as f:
-            pid = int(f.read())
-        os.kill(pid, 0)  # raises OSError if PID does not exist
-        print(f"[ERROR] GUI already running with PID {pid}")
-        sys.exit(1)
-    except Exception:
-        print("Stale lockfile, continuing...")
 
+try:
+    lock_fd = os.open(LOCKFILE, os.O_CREAT | os.O_RDWR)
+    fcntl.lockf(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    os.write(lock_fd, str(os.getpid()).encode())
+except OSError:
+    print("[ERROR] GUI is already running or lockfile in use.")
+    sys.exit(1)
 
-with open(LOCKFILE) as f:
-    pid = int(f.read())
-    if os.path.exists(f"/proc/{pid}"):
-        print(f"[ERROR] GUI already running with PID {pid}. Exiting.")
-        sys.exit(1)
 
 
 with open("/tmp/gui_launch.log", "a") as f:
@@ -396,6 +397,13 @@ if __name__ == "__main__":
         twist_publisher = TwistPublisher()
         threading.Thread(target=rclpy.spin, args=(twist_publisher,), daemon=True).start()
 
+
+    try:
+        root = tk.Tk()
+        root.destroy()
+    except tk.TclError as e:
+        print(f"[ERROR] Could not open Tk window: {e}")
+        sys.exit(1)
     app = App()
     app.mainloop()
 
