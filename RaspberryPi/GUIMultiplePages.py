@@ -101,7 +101,7 @@ class App(tk.Tk):
         self.frames = {}
 
         for F in (StartScreen, ManualScreen, AutomaticScreen):
-            frame = F(container, self)
+            frame = F(container, self, twist_publisher)
             self.frames[F] = frame
             frame.place(relwidth=1, relheight=1)
 
@@ -191,13 +191,15 @@ class ManualScreen(tk.Frame):
 # --- Automatic Screen ---
 class AutomaticScreen(tk.Frame):
 
-    def __init__(self, parent, controller):
+    def __init__(self, parent, controller, twist_publisher):
         super().__init__(parent, bg=BG_color)
         self.controller = controller
         self.loading_popup = None  # Track popup window
         self.loading_label = None
         self.waiting_animation_running = False
         self.dot_count = 0
+
+        self.twist_publisher = twist_publisher
 
         # Text in top left corner
         tk.Label(self, text="Auto", font=("Helvetica", 16, "bold"), fg="#cc0000", bg=BG_color).place(x=20, y=10)
@@ -271,7 +273,7 @@ class AutomaticScreen(tk.Frame):
 
     def on_button_click(self, twist):
         if send_message:
-            twist_publisher.send_msg(twist.name)
+            self.twist_publisher.send_msg(twist.name)
             self.show_loading_popup(twist.name)
 
 
