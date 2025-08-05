@@ -24,6 +24,14 @@ detections_lock = threading.Lock()
 __all__ = ["latest_frame"] 
 
 
+inference_ready = False
+inference_ready_lock = threading.Lock()
+
+latest_frame = None
+frame_lock = threading.Lock()
+
+
+
 @dataclass
 class VisionConfig:
     # Base parameters
@@ -75,8 +83,7 @@ class_names = [
     "Japp", "Karamell", "Lakris", "Notti", "Toffee", "Eclairs", "Marsipan"
 ]
 
-latest_frame = None
-frame_lock = threading.Lock()
+
 
 # === FUNCTIONS ===
 
@@ -100,30 +107,27 @@ def start_inference_thread(model, config):
             if not ret:
                 print("⚠️ Failed to read frame.")
                 continue
-            #else:
-             #   print("[Vision] ✅ Grabbed a frame")
 
             with frame_lock:
                 latest_frame = frame.copy()
-              #  print("[Vision] ✅ Updated latest_frame")
 
             # Undistort
             h, w = frame.shape[:2]
             newcameramtx, _ = cv2.getOptimalNewCameraMatrix(config.mtx, config.dist, (w, h), 1, (w, h))
-            #undistorted = cv2.undistort(frame, config.mtx, config.dist, None, newcameramtx)
+            undistorted = cv2.undistort(frame, config.mtx, config.dist, None, newcameramtx)
 
-            # Run inference
-            print(f"[DEBUG] Running inference...")
+            results = model(undistorted, device=0, verbose=False)[0]
 
-            
-            #results = model(undistorted, device=0, verbose=False)[0]
-            results = model(frame, device=device)[0]
-            
+            # Only set once
+            with inference_ready_lock:
+                global inference_ready
+                if not inference_ready:
+                    inference_ready = True
+                    print("[Vision] ✅ Inference is now ready.")
+
             boxes_tensor = results.boxes.xyxy.cpu().numpy()
             confs_tensor = results.boxes.conf.cpu().numpy()
             class_ids_tensor = results.boxes.cls.cpu().numpy()
-
-            #print(f"[DEBUG] Found {len(boxes_tensor)} raw detections")
 
             detections = []
             for i in range(len(boxes_tensor)):
@@ -132,29 +136,15 @@ def start_inference_thread(model, config):
                 class_id = int(class_ids_tensor[i])
                 if conf > config.CONF_THRESHOLD:
                     detections.append((x1, y1, x2, y2, conf, class_id))
-            
-            print(f"[DEBUG] Final detections above threshold: {len(detections)}")
-           
-
-            #print(f"[Vision] ✅ Inference ran. Found {len(detections)} objects")
-
+    
             with detections_lock:
                 latest_detections.clear()
                 latest_detections.extend(detections)
-
-            #print("[DEBUG] latest_detections updated:", detections)
-
 
             for x1, y1, x2, y2, conf, class_id in detections:
                 if class_id >= len(class_names):
                     print(f"[Vision] ⚠️ Skipping invalid class_id: {class_id}")
                     continue
-                """
-                label = f"{class_names[class_id]} {conf:.2f}"
-                cv2.rectangle(undistorted, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                cv2.putText(undistorted, label, (x1, y1 - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
-                """
 
 
     thread = threading.Thread(target=inference_loop, daemon=True)
@@ -174,16 +164,25 @@ def pixel_to_world(u, v, H):
     dx, dy = 5.975, -5.975
     return x_mm - dx, y_mm - dy
 
+def wait_for_inference_ready(timeout=10.0):
+    print("[Vision] ⏳ Waiting for inference to be ready...")
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        with inference_ready_lock:
+            if inference_ready:
+                print("[Vision] ✅ Inference is ready.")
+                return True
+        time.sleep(0.1)
+    print("[Vision] ❌ Timeout: Inference was not ready in time.")
+    return False
+
+
 def detect_target(target_class, H):
     with detections_lock:
         detections = list(latest_detections)
-        print("[DEBUG detect_target] latest_detections id:", id(latest_detections))
 
     matches = []
     hit_shown = False
-
-    print("[DETECT TARGET] Got detections:", detections)
-
 
     for x1, y1, x2, y2, conf, class_id in detections:
         class_name = class_names[class_id]
@@ -197,15 +196,13 @@ def detect_target(target_class, H):
 
         matches.append((class_name, x_mm, y_mm, conf))
 
-        print(f"[DETECT TARGET] Checking {class_name} vs {target_class}")
-
-
         # Show current frame with hit visualization (use latest at hit moment)
         if not hit_shown:
             with frame_lock:
                 frame = latest_frame.copy() if latest_frame is not None else None
 
             if frame is not None:
+                
                 label = f"{class_name} {conf:.2f}"
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
@@ -226,9 +223,6 @@ def show_live_detections():
             frame = latest_frame.copy() if latest_frame is not None else None
         with detections_lock:
             detections = list(latest_detections)
-
-        print("[LIVE DEBUG] Detections to draw:", detections)
-
 
         if frame is None:
             continue

@@ -42,20 +42,17 @@ def main():
     model = vision.init_yolo(vision_conf.MODEL_PATH)    
     vision.start_inference_thread(model, vision_conf)  
 
-    log("Waiting for first camera frame...")
-    print(f"[Main] Frame is: {type(vision.latest_frame)}")
-    while vision.latest_frame is None:
-        time.sleep(0.1)
-    log("Camera feed ready. Continuing...")
+    vision.wait_for_inference_ready(timeout=10.0)
   
-
-
-    threading.Thread(target=vision.show_live_detections, daemon=True).start()
+  
+    #Show live videofeed
+    #threading.Thread(target=vision.show_live_detections, daemon=True).start()
 
     #Move robot to position to take picture
     controller.go_to_pos(move_pos = (0, 0, -305))
     controller.go_to_pos(move_pos = (-120, 80, -305))
-    
+
+
     # Initial state
     state = RobotState.IDLE
     order = None   
