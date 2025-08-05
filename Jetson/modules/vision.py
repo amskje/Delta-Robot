@@ -1,35 +1,10 @@
 import cv2
-from ultralytics import YOLO
-from dataclasses import dataclass, field
 import numpy as np
 import threading
-
 import time
-
-
-import tensorrt as trt
-import pycuda.driver as cuda
-import pycuda.autoinit
-import numpy as np
-import cv2
 import torch
-
+from dataclasses import dataclass, field
 from ultralytics import YOLO
-import torch
-
-
-latest_detections = []
-detections_lock = threading.Lock()
-
-__all__ = ["latest_frame"] 
-
-
-inference_ready = False
-inference_ready_lock = threading.Lock()
-
-latest_frame = None
-frame_lock = threading.Lock()
-
 
 
 @dataclass
@@ -64,6 +39,17 @@ class VisionConfig:
         self.dist = self.camera_cal['dist_coeffs']
         self.H = np.load("homography_camera.npy")
 
+
+@dataclass
+class VisionState:
+    latest_frame: np.ndarray = None
+    latest_detections: list = field(default_factory=list)
+    inference_ready: bool = False
+
+    frame_lock: threading.Lock = field(default_factory=threading.Lock)
+    detections_lock: threading.Lock = field(default_factory=threading.Lock)
+    inference_ready_lock: threading.Lock = field(default_factory=threading.Lock)
+
 def config() -> VisionConfig:
     return VisionConfig()
 
@@ -84,12 +70,9 @@ class_names = [
 ]
 
 
-
 # === FUNCTIONS ===
 
-def start_inference_thread(model, config):
-    global latest_frame, latest_detections
-
+def start_inference_thread(model, config, state: VisionState):
     cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
 
     if not cap.isOpened():
@@ -100,7 +83,6 @@ def start_inference_thread(model, config):
 
 
     def inference_loop():
-        global latest_frame 
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         while True:
             ret, frame = cap.read()
@@ -108,8 +90,8 @@ def start_inference_thread(model, config):
                 print("⚠️ Failed to read frame.")
                 continue
 
-            with frame_lock:
-                latest_frame = frame.copy()
+            with state.frame_lock:
+                state.latest_frame = frame.copy()
 
             # Undistort
             h, w = frame.shape[:2]
@@ -119,10 +101,9 @@ def start_inference_thread(model, config):
             results = model(undistorted, device=0, verbose=False)[0]
 
             # Only set once
-            with inference_ready_lock:
-                global inference_ready
-                if not inference_ready:
-                    inference_ready = True
+            with state.inference_ready_lock:
+                if not state.inference_ready:
+                    state.inference_ready = True
                     print("[Vision] ✅ Inference is now ready.")
 
             boxes_tensor = results.boxes.xyxy.cpu().numpy()
@@ -137,9 +118,9 @@ def start_inference_thread(model, config):
                 if conf > config.CONF_THRESHOLD:
                     detections.append((x1, y1, x2, y2, conf, class_id))
     
-            with detections_lock:
-                latest_detections.clear()
-                latest_detections.extend(detections)
+            with state.detections_lock:
+                state.latest_detections.clear()
+                state.latest_detections.extend(detections)
 
             for x1, y1, x2, y2, conf, class_id in detections:
                 if class_id >= len(class_names):
@@ -164,12 +145,12 @@ def pixel_to_world(u, v, H):
     dx, dy = 5.975, -5.975
     return x_mm - dx, y_mm - dy
 
-def wait_for_inference_ready(timeout=10.0):
+def wait_for_inference_ready(state: VisionState, timeout=10.0):
     print("[Vision] ⏳ Waiting for inference to be ready...")
     start_time = time.time()
     while time.time() - start_time < timeout:
-        with inference_ready_lock:
-            if inference_ready:
+        with state.inference_ready_lock:
+            if state.inference_ready:
                 print("[Vision] ✅ Inference is ready.")
                 return True
         time.sleep(0.1)
@@ -177,9 +158,9 @@ def wait_for_inference_ready(timeout=10.0):
     return False
 
 
-def detect_target(target_class, H):
-    with detections_lock:
-        detections = list(latest_detections)
+def detect_target(target_class, H, state: VisionState):
+    with state.detections_lock:
+        detections = list(state.latest_detections)
 
     matches = []
     hit_shown = False
@@ -198,8 +179,8 @@ def detect_target(target_class, H):
 
         # Show current frame with hit visualization (use latest at hit moment)
         if not hit_shown:
-            with frame_lock:
-                frame = latest_frame.copy() if latest_frame is not None else None
+            with state.frame_lock:
+                frame = state.latest_frame.copy() if state.latest_frame is not None else None
 
             if frame is not None:
                 
@@ -217,12 +198,12 @@ def detect_target(target_class, H):
     return matches
 
 
-def show_live_detections():
+def show_live_detections(state: VisionState):
     while True:
-        with frame_lock:
-            frame = latest_frame.copy() if latest_frame is not None else None
-        with detections_lock:
-            detections = list(latest_detections)
+        with state.frame_lock:
+            frame = state.latest_frame.copy() if state.latest_frame is not None else None
+        with state.detections_lock:
+            detections = list(state.latest_detections)
 
         if frame is None:
             continue
@@ -241,12 +222,6 @@ def show_live_detections():
             break
 
     cv2.destroyAllWindows()
-
-
-
-
-
-
 
 
 
