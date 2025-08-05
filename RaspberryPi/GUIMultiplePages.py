@@ -370,4 +370,9 @@ if __name__ == "__main__":
         threading.Thread(target=rclpy.spin, args=(twist_publisher,), daemon=True).start()
 
     app = App()
-    app.mainloop()
+
+    try:
+        app.mainloop()
+    finally:
+        if send_message:
+            rclpy.shutdown()
