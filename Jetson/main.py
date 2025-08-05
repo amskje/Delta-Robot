@@ -30,20 +30,41 @@ class RobotState(Enum):
 def log(msg: str):
     """Prints a log message with timestamp."""
     print(f"[{time.strftime('%H:%M:%S')}] {msg}")
-
+    
 
 def main():
     # Initialize modules
     ROS = comms.ROSComm()
     serial = comms.SerialComm()
     controller = control.DeltaRobotController(serial)
+    vision_state = vision.VisionState()
+
+    arduino_ready = False
+    rpi_ready = False
 
     vision_conf = vision.config()
     model = vision.init_yolo(vision_conf.MODEL_PATH)    
-    vision.start_inference_thread(model, vision_conf)  
+    vision.start_inference_thread(model, vision_conf, vision_state)  
 
-    vision.wait_for_inference_ready(timeout=10.0)
-  
+    vision.wait_for_inference_ready(vision_state, timeout=10.0)
+
+    #while not (arduino_ready and rpi_ready):
+    while not (arduino_ready):
+        # Poll Arduino
+        if not arduino_ready:
+            line = serial.conn.readline().decode().strip()
+            if "Finished setup" in line:
+                log("✅ Arduino is ready.")
+                arduino_ready = True
+
+        # Poll RPi message
+        msg = ROS.get_latest_message()
+        if not rpi_ready and msg == "RPi_READY":
+            log("✅ RPi is ready.")
+            rpi_ready = True
+            ROS.clear_message()
+
+        time.sleep(0.1)
   
     #Show live videofeed
     #threading.Thread(target=vision.show_live_detections, daemon=True).start()
@@ -55,7 +76,10 @@ def main():
 
     # Initial state
     state = RobotState.IDLE
-    order = None   
+    order = None 
+
+    ROS.send_message("SETUP_COMPLETE")
+    log(" Setup complete. Sent confirmation to RPi.")  
 
     log("System initialized. Entering main loop...")
 
@@ -97,7 +121,7 @@ def main():
 
             # Retry YOLO detection up to 15 times
             while not matches and retry_count < 15:
-                matches = vision.detect_target(order, vision_conf.H)                
+                matches = vision.detect_target(order, vision_conf, vision_state)                
                 if not matches:
                     log(f"No target found on attempt {retry_count + 1}. Retrying...")
                     retry_count += 1

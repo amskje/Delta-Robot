@@ -17,6 +17,7 @@ class VisionConfig:
     CAM_TO_ROBOT_Y_OFFSET_CM: float = 1.6
     MODEL_PATH: str = "modules/weightsV3.pt"
     CONF_THRESHOLD: float = 0.7
+    WORKING_RADIUS_CM: float = 14.8
 
     # Derived parameters will be computed
     PIXEL_TO_CM_X: float = None
@@ -158,7 +159,7 @@ def wait_for_inference_ready(state: VisionState, timeout=10.0):
     return False
 
 
-def detect_target(target_class, H, state: VisionState):
+def detect_target(target_class, config: VisionConfig, state: VisionState):
     with state.detections_lock:
         detections = list(state.latest_detections)
 
@@ -170,11 +171,25 @@ def detect_target(target_class, H, state: VisionState):
         if class_name != target_class:
             continue
 
-        # Compute center
+        # Compute center in pixels
         x_pixel = int((x1 + x2) / 2)
         y_pixel = int((y1 + y2) / 2)
-        x_mm, y_mm = pixel_to_world(x_pixel, y_pixel, H)
 
+        # Distance from image center
+        dx = x_pixel - config.IMG_CENTER_X
+
+        radius_px = int(config.WORKING_RADIUS_CM / config.PIXEL_TO_CM_X)
+
+        dy = y_pixel - config.IMG_CENTER_Y
+        dist_px = np.sqrt(dx**2 + dy**2)
+
+        # Compare to radius (in px)
+        if dist_px > radius_px:
+            print(f"[Vision] Skipping {class_name} — outside working area.")
+            continue  # outside of working area
+
+        # Otherwise, compute world coords and add as match
+        x_mm, y_mm = pixel_to_world(x_pixel, y_pixel, config.H)
         matches.append((class_name, x_mm, y_mm, conf))
 
         # Show current frame with hit visualization (use latest at hit moment)
@@ -199,6 +214,8 @@ def detect_target(target_class, H, state: VisionState):
 
 
 def show_live_detections(state: VisionState):
+    visCFG = config()  # You may already have this passed instead
+
     while True:
         with state.frame_lock:
             frame = state.latest_frame.copy() if state.latest_frame is not None else None
@@ -208,6 +225,7 @@ def show_live_detections(state: VisionState):
         if frame is None:
             continue
 
+        # Draw detections
         for x1, y1, x2, y2, conf, class_id in detections:
             if class_id >= len(class_names):
                 continue
@@ -216,7 +234,15 @@ def show_live_detections(state: VisionState):
             cv2.putText(frame, label, (x1, y1 - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
 
-        draw_overlay(frame)
+        # ✅ Draw center dot
+        cv2.circle(
+            frame,
+            (visCFG.IMG_CENTER_X, visCFG.IMG_CENTER_Y),
+            radius=4,
+            color=(255, 0, 0),
+            thickness=-1
+        )
+
         cv2.imshow("🍬 All Detections", frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
