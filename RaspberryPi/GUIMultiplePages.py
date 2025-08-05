@@ -9,6 +9,8 @@ from rclpy.node import Node
 from std_msgs.msg import String
 import threading
 
+import time
+
 # --- Global Style ---
 button_style = {
     "bg": "#cc0000",                 # Red
@@ -364,6 +366,8 @@ class AutomaticScreen(tk.Frame):
 
 # --- Main ---
 if __name__ == "__main__":
+    time.sleep(5)  # wait for ROS networking to be ready
+
     if send_message:
         rclpy.init()
         twist_publisher = TwistPublisher()
