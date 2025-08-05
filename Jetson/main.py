@@ -9,11 +9,14 @@ import modules.kinematics as kinematics
 
 
 import numpy as np
+import threading
 
 #Teset, for middlertidig keyboard knapp d
 import sys
 import select
 #Teset, for middlertidig keyboard knapp d
+
+
 
 
 class RobotState(Enum):
@@ -34,34 +37,30 @@ def main():
     ROS = comms.ROSComm()
     serial = comms.SerialComm()
     controller = control.DeltaRobotController(serial)
-    model = vision.init_yolo()
+
     vision_conf = vision.config()
- 
+    model = vision.init_yolo(vision_conf.MODEL_PATH)    
+    vision.start_inference_thread(model, vision_conf)  
 
-    #Warm-up YOLO model
-    dummy = np.zeros((640, 640, 3), dtype=np.uint8)
-    model(dummy)
+    log("Waiting for first camera frame...")
+    print(f"[Main] Frame is: {type(vision.latest_frame)}")
+    while vision.latest_frame is None:
+        time.sleep(0.1)
+    log("Camera feed ready. Continuing...")
+  
 
-    vision.start_camera_thread()
 
+    threading.Thread(target=vision.show_live_detections, daemon=True).start()
+
+    #Move robot to position to take picture
+    controller.go_to_pos(move_pos = (0, 0, -305))
+    controller.go_to_pos(move_pos = (-120, 80, -305))
+    
     # Initial state
     state = RobotState.IDLE
-    order = None
+    order = None   
 
     log("System initialized. Entering main loop...")
-    """
-    controller.twist_delivery(
-                target_pos=(0, 0 , -305),
-                dropoff_pos=(0, 0 , -305), include_dropoff = False
-            )
-    controller.twist_delivery(
-                target_pos=(-120, 80 , -305),
-                dropoff_pos=(-120, 80 , -305), include_dropoff =False
-            )
-    """
-
-    controller.go_to_picture_pos(move_pos = (0, 0, -305))
-    controller.go_to_picture_pos(move_pos = (-120, 80, -305))   
 
     while rclpy.ok():
         ROS.spin_once(timeout_sec=0.1)
@@ -78,7 +77,7 @@ def main():
                 key = sys.stdin.readline().strip()
                 if key.lower() == 'd':
                     log("Keyboard input 'd' detected. Simulating 'daim' message.")
-                    order = 'Daim'
+                    order = 'Banan'
                     state = RobotState.DELIVERING
                     continue
 
@@ -101,8 +100,7 @@ def main():
 
             # Retry YOLO detection up to 15 times
             while not matches and retry_count < 15:
-                matches = vision.detect_target(model, order, vision_conf.mtx, vision_conf.dist, vision_conf.H)
-                
+                matches = vision.detect_target(order, vision_conf.H)                
                 if not matches:
                     log(f"No target found on attempt {retry_count + 1}. Retrying...")
                     retry_count += 1
