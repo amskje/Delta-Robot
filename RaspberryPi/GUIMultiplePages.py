@@ -78,6 +78,17 @@ class TwistPublisher(Node):
         """ Register a handler for a specific message value. """
         self.message_handlers[message] = handler_func
 
+    def wait_for_subscriber(self, timeout_sec=10):
+        start = time.time()
+        while time.time() - start < timeout_sec:
+            if self.publisher_.get_subscription_count() > 0:
+                self.get_logger().info("Subscriber discovered!")
+                return True
+            self.get_logger().info("Waiting for subscriber...")
+            time.sleep(0.5)
+        self.get_logger().warn("No subscriber discovered within timeout.")
+        return False
+
 # --- App ---
 class App(tk.Tk):
     def __init__(self):
@@ -372,6 +383,8 @@ if __name__ == "__main__":
         rclpy.init()
         twist_publisher = TwistPublisher()
         threading.Thread(target=rclpy.spin, args=(twist_publisher,), daemon=True).start()
+        twist_publisher.wait_for_subscriber(timeout_sec=10)
+
 
     app = App()
     app.mainloop()
