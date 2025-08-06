@@ -134,7 +134,7 @@ class StartScreen(tk.Frame):
         tk.Button(
             self,
             text="Exit to Desktop",
-            command=self.exit_to_desktop
+            command=self.exit_to_desktop,
             **button_style
         ).place(x=20, y=10, anchor="nw")
 
@@ -162,9 +162,9 @@ class StartScreen(tk.Frame):
             **button_style).grid(row=0, column=2, padx=20, pady=10, sticky="ew")
         """
 
-        def exit_to_desktop(self):
-            print("Exiting GUI to desktop safely...")
-            self.controller.destroy()  # Destroys the main Tk window (if desired)
+    def exit_to_desktop(self):
+        print("Exiting GUI to desktop safely...")
+        self.controller.destroy()  # Destroys the main Tk window (if desired)
 
 # --- Manual Screen ---
 class ManualScreen(tk.Frame):
