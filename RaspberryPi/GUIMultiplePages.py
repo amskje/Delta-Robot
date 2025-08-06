@@ -134,7 +134,7 @@ class StartScreen(tk.Frame):
         tk.Button(
             self,
             text="Exit to Desktop",
-            command=self.quit,
+            command=self.destroy(),
             **button_style
         ).place(x=20, y=10, anchor="nw")
 
