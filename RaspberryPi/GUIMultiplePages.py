@@ -92,12 +92,12 @@ class TwistPublisher(Node):
 # --- App ---
 class App(tk.Tk):
     def __init__(self):
-        super().__init__()  # ❗️ must come first
+        super().__init__()  # must come first
 
         self.title("Delta Robot GUI")
         self.configure(bg=BG_color)
 
-        # ✅ Now we can safely get screen size
+        # Now we can safely get screen size
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
         print(f"Detected screen size: {screen_width}x{screen_height}")
@@ -114,16 +114,44 @@ class App(tk.Tk):
 
         self.frames = {}
 
-        for F in (StartScreen, ManualScreen, AutomaticScreen):
+        for F in (LoadingScreen, StartScreen, ManualScreen, AutomaticScreen):
             frame = F(container, self)
             self.frames[F] = frame
             frame.place(relwidth=1, relheight=1)
 
-        self.show_frame(StartScreen)
+        self.show_frame(LoadingScreen)
 
     def show_frame(self, screen_class):
         frame = self.frames[screen_class]
         frame.tkraise()
+
+class LoadingScreen(tk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent, bg=BG_color)
+        self.controller = controller
+        self.dot_count = 0
+        self.max_dots = 3
+
+        # Load and display the logo
+        logo_img = Image.open("pictures/DRLogo.png")
+        logo_img.thumbnail((400, 200), Image.Resampling.LANCZOS)
+        self.logo_photo = ImageTk.PhotoImage(logo_img)
+
+        tk.Label(self, image=self.logo_photo, bg=BG_color).pack(pady=(100, 40))
+
+        # Loading text label
+        self.loading_label = tk.Label(self, text="Loading", font=("Helvetica", 20), fg="white", bg=BG_color)
+        self.loading_label.pack()
+
+        self.animate_loading()
+
+    def animate_loading(self):
+        # Cycle through dot count
+        twist_publisher.send_msg("PI_READY")
+        dots = '.' * (self.dot_count % (self.max_dots + 1))
+        self.loading_label.config(text=f"Loading{dots}")
+        self.dot_count += 1
+        self.after(500, self.animate_loading)  # update every 500ms
 
 # --- Start Screen ---
 class StartScreen(tk.Frame):
