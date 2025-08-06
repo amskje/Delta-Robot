@@ -382,13 +382,13 @@ class AutomaticScreen(tk.Frame):
 
 # --- Main ---
 if __name__ == "__main__":
-    time.sleep(5)  # wait for ROS networking to be ready
+    #time.sleep(5)  # wait for ROS networking to be ready
 
     if send_message:
         rclpy.init()
         twist_publisher = TwistPublisher()
         threading.Thread(target=rclpy.spin, args=(twist_publisher,), daemon=True).start()
-        twist_publisher.wait_for_subscriber(timeout_sec=10)
+        #twist_publisher.wait_for_subscriber(timeout_sec=10)
 
 
     app = App()
