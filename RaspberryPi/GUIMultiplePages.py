@@ -291,7 +291,7 @@ class AutomaticScreen(tk.Frame):
     def on_button_click(self, twist):
         if send_message:
             twist_publisher.send_msg(twist.name)
-            self.show_loading_popup(twist.name)
+            #self.show_loading_popup(twist.name)
 
 
     def show_loading_popup(self, twist_name):
