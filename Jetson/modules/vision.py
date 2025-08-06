@@ -1,10 +1,11 @@
 import cv2
-from ultralytics import YOLO
-from dataclasses import dataclass, field
 import numpy as np
 import threading
-
 import time
+import torch
+from dataclasses import dataclass, field
+from ultralytics import YOLO
+
 
 @dataclass
 class VisionConfig:
@@ -14,8 +15,9 @@ class VisionConfig:
     SURFACE_WIDTH_CM: float = 29.6
     SURFACE_HEIGHT_CM: float = 29.6
     CAM_TO_ROBOT_Y_OFFSET_CM: float = 1.6
-    MODEL_PATH: str = "modules/weightsV2.pt"
-    CONF_THRESHOLD: float = 0.8
+    MODEL_PATH: str = "modules/weightsV3.pt"
+    CONF_THRESHOLD: float = 0.7
+    WORKING_RADIUS_CM: float = 14.8
 
     # Derived parameters will be computed
     PIXEL_TO_CM_X: float = None
@@ -24,10 +26,6 @@ class VisionConfig:
     CM_TO_PIXEL_Y: float = None
     IMG_CENTER_X: int = None
     IMG_CENTER_Y: int = None
-
-    # Camera parameters
-    #latest_frame: np.ndarray = None
-    #frame_lock: threading.Lock = field(default_factory=threading.Lock)
 
     def __post_init__(self):
         # Calculate derived values
@@ -41,6 +39,17 @@ class VisionConfig:
         self.mtx = self.camera_cal['camera_matrix']
         self.dist = self.camera_cal['dist_coeffs']
         self.H = np.load("homography_camera.npy")
+
+
+@dataclass
+class VisionState:
+    latest_frame: np.ndarray = None
+    latest_detections: list = field(default_factory=list)
+    inference_ready: bool = False
+
+    frame_lock: threading.Lock = field(default_factory=threading.Lock)
+    detections_lock: threading.Lock = field(default_factory=threading.Lock)
+    inference_ready_lock: threading.Lock = field(default_factory=threading.Lock)
 
 def config() -> VisionConfig:
     return VisionConfig()
@@ -58,44 +67,77 @@ gst_pipeline = (
 # Class names
 class_names = [
     "Banan", "Cocos", "Crisp", "Daim", "Fransk", "Golden",
-    "Japp", "Karamell", "Lakris", "Notti", "Toffee", "Eclairs"
+    "Japp", "Karamell", "Lakris", "Notti", "Toffee", "Eclairs", "Marsipan"
 ]
 
-#cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
-latest_frame = None
-frame_lock = threading.Lock()
 
 # === FUNCTIONS ===
 
-def start_camera_thread():
-    global latest_frame
+def start_inference_thread(model, config, state: VisionState):
     cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
 
     if not cap.isOpened():
-        print("Failed to open camera")
+        print("[Vision] ❌ GStreamer camera failed to open")
         return
+    else:
+        print("[Vision] ✅ GStreamer camera opened successfully")
 
-    def capture_loop():
-        global latest_frame
+
+    def inference_loop():
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         while True:
             ret, frame = cap.read()
             if not ret:
-                print("Faield to grab frame")
+                print("⚠️ Failed to read frame.")
                 continue
-            with frame_lock:
-                latest_frame = frame.copy()
-    thread = threading.Thread(target=capture_loop, daemon=True)
+
+            with state.frame_lock:
+                state.latest_frame = frame.copy()
+
+            # Undistort
+            h, w = frame.shape[:2]
+            newcameramtx, _ = cv2.getOptimalNewCameraMatrix(config.mtx, config.dist, (w, h), 1, (w, h))
+            undistorted = cv2.undistort(frame, config.mtx, config.dist, None, newcameramtx)
+
+            results = model(undistorted, device=0, verbose=False)[0]
+
+            # Only set once
+            with state.inference_ready_lock:
+                if not state.inference_ready:
+                    state.inference_ready = True
+                    print("[Vision] ✅ Inference is now ready.")
+
+            boxes_tensor = results.boxes.xyxy.cpu().numpy()
+            confs_tensor = results.boxes.conf.cpu().numpy()
+            class_ids_tensor = results.boxes.cls.cpu().numpy()
+
+            detections = []
+            for i in range(len(boxes_tensor)):
+                x1, y1, x2, y2 = boxes_tensor[i].astype(int)
+                conf = float(confs_tensor[i])
+                class_id = int(class_ids_tensor[i])
+                if conf > config.CONF_THRESHOLD:
+                    detections.append((x1, y1, x2, y2, conf, class_id))
+    
+            with state.detections_lock:
+                state.latest_detections.clear()
+                state.latest_detections.extend(detections)
+
+            for x1, y1, x2, y2, conf, class_id in detections:
+                if class_id >= len(class_names):
+                    print(f"[Vision] ⚠️ Skipping invalid class_id: {class_id}")
+                    continue
+
+
+    thread = threading.Thread(target=inference_loop, daemon=True)
     thread.start()
+    print("[Vision] 🌀 Inference thread started")
 
-def get_camera():
-    global cap
-    if not cap.isOpened():
-        cap.open(gst_pipeline)
-    return cap 
 
-def init_yolo(model_path="modules/weightsV2.pt"):
-    """Initialize and return the YOLO model."""
-    return YOLO(model_path)
+def init_yolo(model_path="models/best.pt"):
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model = YOLO(model_path)
+    return model
 
 def pixel_to_world(u, v, H):
     pt = np.array([[[u, v]]], dtype=np.float32)
@@ -104,104 +146,110 @@ def pixel_to_world(u, v, H):
     dx, dy = 5.975, -5.975
     return x_mm - dx, y_mm - dy
 
-def detect_target(model, target_class, mtx, dist, H):
-    """
-    Capture one frame and return all matching objects of the given class
-    as (class_name, x_cm, y_cm, confidence) tuples.
-    """
-    start = time.perf_counter()
+def wait_for_inference_ready(state: VisionState, timeout=10.0):
+    print("[Vision] ⏳ Waiting for inference to be ready...")
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        with state.inference_ready_lock:
+            if state.inference_ready:
+                print("[Vision] ✅ Inference is ready.")
+                return True
+        time.sleep(0.1)
+    print("[Vision] ❌ Timeout: Inference was not ready in time.")
+    return False
 
-    #cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
-    #if not cap.isOpened():
-     #   print("Failed to open camera")
-      #  return []
 
-    #global latest_frame 
-    with frame_lock:
-        if latest_frame is None:
-            print("No frame avalible yet")
-            return[]
-        frame = latest_frame.copy()
-
-    #cap = get_camera()
-    #ret, frame = cap.read()
-    #cap.release()
-    print("frame capture time:", time.perf_counter()-start)
-
-    #if not ret:
-     #   print("Failed to capture frame.")
-      #  return []
-
-    # Undistort
-    h, w = frame.shape[:2]
-    newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w,h), 1, (w,h))
-    undistorted = cv2.undistort(frame, mtx, dist, None, newcameramtx)
-
-    start = time.perf_counter()
-    results = model(undistorted, conf=config().CONF_THRESHOLD)[0]
-    print("YOLO inference time:", time.perf_counter()-start)
-
- 
-    annotated_frame = results.plot()
+def detect_target(target_class, config: VisionConfig, state: VisionState):
+    with state.detections_lock:
+        detections = list(state.latest_detections)
 
     matches = []
+    hit_shown = False
 
-    for box in results.boxes:
-        class_id = int(box.cls[0].item())
+    for x1, y1, x2, y2, conf, class_id in detections:
         class_name = class_names[class_id]
-        conf = float(box.conf[0].item())
-
         if class_name != target_class:
-            print("Mismatch class name")
             continue
 
-        x_pixel = int(box.xywh[0][0].item())
-        y_pixel = int(box.xywh[0][1].item())
+        # Compute center in pixels
+        x_pixel = int((x1 + x2) / 2)
+        y_pixel = int((y1 + y2) / 2)
 
-        # Draw red center dot
-        cv2.circle(annotated_frame, (x_pixel, y_pixel), radius=5, color=(0, 0, 255), thickness=-1)
+        # Distance from image center
+        dx = x_pixel - config.IMG_CENTER_X
 
-        x_mm_old = (x_pixel - config().IMG_CENTER_X) * config().PIXEL_TO_CM_X * 10  # Convert to mm
-        y_mm_old = (y_pixel - config().IMG_CENTER_Y) * config().PIXEL_TO_CM_Y * 10  # Convert to mm
+        radius_px = int(config.WORKING_RADIUS_CM / config.PIXEL_TO_CM_X)
 
-        x_mm, y_mm = pixel_to_world(x_pixel, y_pixel, H)
+        dy = y_pixel - config.IMG_CENTER_Y
+        dist_px = np.sqrt(dx**2 + dy**2)
 
-        # Overlay coordinate text
-        coord_label = f"({x_mm:.1f}, {y_mm:.1f}) mm"
-        cv2.putText(annotated_frame, coord_label, (x_pixel + 5, y_pixel - 5),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+        # Compare to radius (in px)
+        if dist_px > radius_px:
+            print(f"[Vision] Skipping {class_name} — outside working area.")
+            continue  # outside of working area
 
-        print(f"Undistorted Real-world coords: X = {x_mm_old:.2f} mm, Y = {y_mm_old:.2f} mm")
-        print(f"H and undistorted Real-world coords: X = {x_mm:.2f} mm, Y = {y_mm:.2f} mm")
-
+        # Otherwise, compute world coords and add as match
+        x_mm, y_mm = pixel_to_world(x_pixel, y_pixel, config.H)
         matches.append((class_name, x_mm, y_mm, conf))
 
-    # TESTING FOR Å SE FORSKJELL PÅ GAMMLE OG NYE, CALIBRERTE VERDIER
-    results_old = model(frame, conf=config().CONF_THRESHOLD)[0]
+        # Show current frame with hit visualization (use latest at hit moment)
+        if not hit_shown:
+            with state.frame_lock:
+                frame = state.latest_frame.copy() if state.latest_frame is not None else None
 
-    for box in results_old.boxes:
-        class_id = int(box.cls[0].item())
-        class_name = class_names[class_id]
-        conf = float(box.conf[0].item())
+            if frame is not None:
+                
+                label = f"{class_name} {conf:.2f}"
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                cv2.circle(frame, (x_pixel, y_pixel), 4, (0, 0, 255), -1)
 
-        if class_name != target_class:
-            print("Mismatch class name")
-            continue
+                cv2.imshow("🎯 Target Hit", frame)
+                cv2.waitKey(1000)
+                cv2.destroyWindow("🎯 Target Hit")
 
-        x_pixel = int(box.xywh[0][0].item())
-        y_pixel = int(box.xywh[0][1].item())
-
-        x_mm = (x_pixel - config().IMG_CENTER_X) * config().PIXEL_TO_CM_X * 10  # Convert to mm
-        y_mm = (y_pixel - config().IMG_CENTER_Y) * config().PIXEL_TO_CM_Y * 10  # Convert to mm
-
-        print(f"Old Real-world coords: X = {x_mm:.2f} mm, Y = {y_mm:.2f} mm")
-
-    if matches:
-        cv2.imshow("Picture", annotated_frame)
-        cv2.waitKey(1000000)
-        cv2.destroyWindow("Picture")
+            hit_shown = True
 
     return matches
+
+
+def show_live_detections(state: VisionState):
+    visCFG = config()  # You may already have this passed instead
+
+    while True:
+        with state.frame_lock:
+            frame = state.latest_frame.copy() if state.latest_frame is not None else None
+        with state.detections_lock:
+            detections = list(state.latest_detections)
+
+        if frame is None:
+            continue
+
+        # Draw detections
+        for x1, y1, x2, y2, conf, class_id in detections:
+            if class_id >= len(class_names):
+                continue
+            label = f"{class_names[class_id]} {conf:.2f}"
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.putText(frame, label, (x1, y1 - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+
+        # ✅ Draw center dot
+        cv2.circle(
+            frame,
+            (visCFG.IMG_CENTER_X, visCFG.IMG_CENTER_Y),
+            radius=4,
+            color=(255, 0, 0),
+            thickness=-1
+        )
+
+        cv2.imshow("🍬 All Detections", frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    cv2.destroyAllWindows()
+
+
 
 def video_without_inference():
     """Display the live video feed without running inference."""

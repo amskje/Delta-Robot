@@ -9,11 +9,14 @@ import modules.kinematics as kinematics
 
 
 import numpy as np
+import threading
 
 #Teset, for middlertidig keyboard knapp d
 import sys
 import select
 #Teset, for middlertidig keyboard knapp d
+
+
 
 
 class RobotState(Enum):
@@ -27,41 +30,58 @@ class RobotState(Enum):
 def log(msg: str):
     """Prints a log message with timestamp."""
     print(f"[{time.strftime('%H:%M:%S')}] {msg}")
-
+    
 
 def main():
     # Initialize modules
     ROS = comms.ROSComm()
     serial = comms.SerialComm()
     controller = control.DeltaRobotController(serial)
-    model = vision.init_yolo()
+    vision_state = vision.VisionState()
+
+    arduino_ready = False
+    rpi_ready = False
+
     vision_conf = vision.config()
- 
+    model = vision.init_yolo(vision_conf.MODEL_PATH)    
+    vision.start_inference_thread(model, vision_conf, vision_state)  
 
-    #Warm-up YOLO model
-    dummy = np.zeros((640, 640, 3), dtype=np.uint8)
-    model(dummy)
+    vision.wait_for_inference_ready(vision_state, timeout=10.0)
 
-    vision.start_camera_thread()
+    #while not (arduino_ready and rpi_ready):
+    while not (arduino_ready):
+        # Poll Arduino
+        if not arduino_ready:
+            line = serial.conn.readline().decode().strip()
+            if "Finished setup" in line:
+                log("✅ Arduino is ready.")
+                arduino_ready = True
+
+        # Poll RPi message
+        msg = ROS.get_latest_message()
+        if not rpi_ready and msg == "RPi_READY":
+            log("✅ RPi is ready.")
+            rpi_ready = True
+            ROS.clear_message()
+
+        time.sleep(0.1)
+  
+    #Show live videofeed
+    #threading.Thread(target=vision.show_live_detections, daemon=True).start()
+
+    #Move robot to position to take picture
+    controller.go_to_pos(move_pos = (0, 0, -305))
+    controller.go_to_pos(move_pos = (-120, 80, -305))
+
 
     # Initial state
     state = RobotState.IDLE
-    order = None
+    order = None 
+
+    ROS.send_message("SETUP_COMPLETE")
+    log(" Setup complete. Sent confirmation to RPi.")  
 
     log("System initialized. Entering main loop...")
-    """
-    controller.twist_delivery(
-                target_pos=(0, 0 , -305),
-                dropoff_pos=(0, 0 , -305), include_dropoff = False
-            )
-    controller.twist_delivery(
-                target_pos=(-120, 80 , -305),
-                dropoff_pos=(-120, 80 , -305), include_dropoff =False
-            )
-    """
-
-    controller.go_to_picture_pos(move_pos = (0, 0, -305))
-    controller.go_to_picture_pos(move_pos = (-120, 80, -305))   
 
     while rclpy.ok():
         ROS.spin_once(timeout_sec=0.1)
@@ -78,7 +98,7 @@ def main():
                 key = sys.stdin.readline().strip()
                 if key.lower() == 'd':
                     log("Keyboard input 'd' detected. Simulating 'daim' message.")
-                    order = 'Daim'
+                    order = 'Banan'
                     state = RobotState.DELIVERING
                     continue
 
@@ -101,8 +121,7 @@ def main():
 
             # Retry YOLO detection up to 15 times
             while not matches and retry_count < 15:
-                matches = vision.detect_target(model, order, vision_conf.mtx, vision_conf.dist, vision_conf.H)
-                
+                matches = vision.detect_target(order, vision_conf, vision_state)                
                 if not matches:
                     log(f"No target found on attempt {retry_count + 1}. Retrying...")
                     retry_count += 1
