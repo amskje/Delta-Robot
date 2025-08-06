@@ -32,6 +32,7 @@ class ROSComm:
         self.node.get_logger().info(f"ROS initialized on topic '{topic}'")
 
     def receive_callback(self, msg: String):
+        print(f"[ROS] Recived: {msg.data}")
         self.node.get_logger().info(f"Received: {msg.data}")
         self._latest_msg = msg.data
 

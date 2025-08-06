@@ -13,9 +13,6 @@ class KinematicsConfig:
     # Stepper settings
     pulses_per_rev: int = 8000
 
-    # Motion planning
-    MAX_waypoints: int = 5
-
     def __post_init__(self):
         self.tan30 = math.tan(math.radians(30))
         self.cos120 = math.cos(math.radians(120))

@@ -13,9 +13,9 @@ HOME_Z = -247.34
 @dataclass
 class ControlConfig:
     # Base parameters
-    WAYPOINTS: int = 5 # Minimum 2
-    WAYPOINTS_DOWN: int = 5 #Minimum 2
-    DOWN_MM: int = 32 #Total mm robot can move down after hitting target pos
+    WAYPOINTS: int = 30 # Minimum 2
+    WAYPOINTS_DOWN: int = 10 #Minimum 2
+    DOWN_MM: int = 70 #Total mm robot can move down after hitting target pos
     INITIAL_POSITION: kinematics.Position = kinematics.Position(HOME_X, HOME_Y, HOME_Z)  # Initial position after goHome()
 
 def config() -> ControlConfig:
@@ -64,7 +64,6 @@ class DeltaRobotController:
                 self.serial.send_message(msg)
 
 
-
         self.serial.send_message("GO")
         if not self.serial.wait_for_ack("DONE"):
             print("[Error] Arduino did not complete GO.")
@@ -92,31 +91,21 @@ class DeltaRobotController:
         kinematics.plan_linear_move(self.current_pos[0], self.current_pos[1], self.current_pos[2],
                                     x_corrected, y_corrected, target_pos[2], pickup_angles, waypoints=config().WAYPOINTS)
 
-        #Pre calculated steps for moving down if twist is not picked up, maby change the number 25
-        #kan kanskje sende den 6 cm ned, også i arduino code ta å bruke 1/3 av way punktene av gangen
+        #Plan the moving down waypoints
         kinematics.plan_linear_move(x_corrected, y_corrected, target_pos[2],
                                     x_corrected, y_corrected, target_pos[2]-config().DOWN_MM, down_angles, waypoints=config().WAYPOINTS_DOWN)
 
 
-
-        #Her får man done for arduino hvis den har plukket opp twsiten
         if not self.send_angles_sequence(pickup_angles, down_angles, down_included=True):
             return False
 
-        # === Pickup operation
-
-
-        #self.serial.send_message("PUMP_ON")
-        
-        #if not self.serial.wait_for_ack("PICKED_UP"):
-         #   print("[Error] Pickup not acknowledged.")
-         #   return False
-        
+        # Update robot position
         self.current_pos = [x_corrected, y_corrected, target_pos[2]] 
-        
-        print(f"[Control] Planning move to drop-off at {dropoff_pos}...")
+
 
         # === Phase 2: Plan path to drop-off
+        
+        print(f"[Control] Planning move to drop-off at {dropoff_pos}...")
 
         # Adjust dropoff pos with H
         x_dropoff_corrected, y_dropoff_corrected = self.correct_target(dropoff_pos[0], dropoff_pos[1])
@@ -132,15 +121,12 @@ class DeltaRobotController:
 
 
         # === Release
-        #self.serial.send_message("PUMP_OFF")
         self.serial.send_message("DROPP")
-
 
         if not self.send_angles_sequence(dropoff_angles, [], down_included=False):
             return False
         
       
-    
         # Update robot state
         self.current_pos = list(dropoff_pos)
         print("[Control] Delivery complete.")
@@ -148,28 +134,28 @@ class DeltaRobotController:
 
 
  
-    def go_to_picture_pos(self, move_pos: Tuple[float, float, float]):
+    def go_to_pos(self, move_pos: Tuple[float, float, float]):
         """
-        Executes a full delivery sequence from current position to target, then drop-off.
+        Moves the robot to choosen x, y and z coordinates
         
         Args:
             move_pos (List[int]): [x, y, z] coordinates of point to move to
         """
         print(f"[Control] Planning move to pickup at {move_pos}...")
 
-        # === Phase 1: Plan path to pickup
-        down_angles = (0,0,0)
+        down_angles = []
         move_angles = []
+
+        x_corrected, y_corrected = self.correct_target(move_pos[0], move_pos[1])
  
         kinematics.plan_linear_move(self.current_pos[0], self.current_pos[1], self.current_pos[2],
-                                    move_pos[0], move_pos[1], move_pos[2], move_angles, waypoints=config().WAYPOINTS)
+                                    x_corrected, y_corrected, move_pos[2], move_angles, waypoints=config().WAYPOINTS)
 
         if not self.send_angles_sequence(move_angles, down_angles, down_included=False):
             return False
 
-        self.current_pos = [move_pos[0], move_pos[1], move_pos[2]] 
+        self.current_pos = [x_corrected, y_corrected, move_pos[2]] 
         
-
         print("[Control] Move complete.")
         return True
         
