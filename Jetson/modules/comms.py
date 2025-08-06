@@ -74,6 +74,8 @@ class SerialComm:
                 if line == expected_ack:
                     print("[Serial] ACK received.")
                     return True
+                else:
+                    return line
         print("[Serial] ACK timeout.")
         return False
     
