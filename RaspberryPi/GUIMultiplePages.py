@@ -143,11 +143,12 @@ class LoadingScreen(tk.Frame):
         self.loading_label = tk.Label(self, text="Loading", font=("Helvetica", 20), fg="white", bg=BG_color)
         self.loading_label.pack()
 
+        twist_publisher.send_msg("PI_READY")
+        
         self.animate_loading()
 
     def animate_loading(self):
         # Cycle through dot count
-        twist_publisher.send_msg("PI_READY")
         dots = '.' * (self.dot_count % (self.max_dots + 1))
         self.loading_label.config(text=f"Loading{dots}")
         self.dot_count += 1
