@@ -341,16 +341,12 @@ class AutomaticScreen(tk.Frame):
         popup_width = 400
         popup_height = 200
 
-        main_x = self.winfo_rootx()
-        main_y = self.winfo_rooty()
-        main_width = self.winfo_width()
-        main_height = self.winfo_height()
+        screen_width = 800
+        screen_height = 480
 
-        # Calculate position
-        x = main_x + (main_width // 2) - (popup_width // 2)
-        y = main_y + (main_height // 2) - (popup_height // 2)
+        x = (screen_width // 2) - (popup_width // 2)
+        y = (screen_height // 2) - (popup_height // 2)
 
-        # Set the final popup geometry
         self.loading_popup.geometry(f"{popup_width}x{popup_height}+{x}+{y}")
 
 
