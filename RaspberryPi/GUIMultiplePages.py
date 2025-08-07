@@ -407,10 +407,10 @@ class AutomaticScreen(tk.Frame):
         self.dot_count = (self.dot_count + 1) % 4  # Cycles through 0,1,2,3
         self.after(500, self.animate_dots)  # Call again after 500ms
 
-def reboot_app():
+def reboot_app(app_to_close):
     print("🛑 REBOOT message received — exiting app.")
-    app.quit()
-    app.destroy()
+    app_to_close.quit()
+    app_to_close.destroy()
     sys.exit(1)
 
 
