@@ -120,7 +120,7 @@ class App(tk.Tk):
             self.frames[F] = frame
             frame.place(relwidth=1, relheight=1)
 
-        self.show_frame(LoadingScreen)
+        #self.show_frame(LoadingScreen)
 
     def show_frame(self, screen_class):
         frame = self.frames[screen_class]
@@ -432,6 +432,7 @@ if __name__ == "__main__":
 
     #twist_publisher.register_handler("REBOOT", lambda: app.after(0, lambda: reboot_app(app)))
 
+    print(twist_publisher.message_handlers)
 
 
     app.mainloop()
