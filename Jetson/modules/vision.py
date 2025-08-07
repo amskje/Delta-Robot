@@ -170,10 +170,14 @@ def detect_target(target_class, config: VisionConfig, state: VisionState):
         class_name = class_names[class_id]
         if class_name != target_class:
             continue
+        
+        bbox = (x1, y1, x2, y2, conf, class_id)
+        refined_center = refine_target_center(state.latest_frame, bbox, debug=False)
+
 
         # Compute center in pixels
-        x_pixel = int((x1 + x2) / 2)
-        y_pixel = int((y1 + y2) / 2)
+        x_pixel = refined_center[0]
+        y_pixel = refined_center[1]
 
         # Distance from image center
         dx = x_pixel - config.IMG_CENTER_X
@@ -310,3 +314,63 @@ def video_loop(cap, stop_event):
 
     cap.release()
     cv2.destroyAllWindows()
+
+
+def refine_target_center(image, bbox, debug=False):
+    """
+    Refines the target center inside a YOLO bounding box using cv2.moments()
+    to get the actual center of mass of the object.
+
+    Args:
+        image (np.ndarray): Original BGR image.
+        bbox (tuple or list): YOLO bbox in format (x1, y1, x2, y2, conf, class_id)
+        debug (bool): If True, shows debug visualization.
+
+    Returns:
+        tuple: Refined (x, y) coordinates in full image space.
+    """
+    x1, y1, x2, y2 = map(int, bbox[:4])  # extract and convert to int
+
+    # Ensure crop stays within image bounds
+    x1 = max(0, x1)
+    y1 = max(0, y1)
+    x2 = min(image.shape[1], x2)
+    y2 = min(image.shape[0], y2)
+
+    cropped = image[y1:y2, x1:x2].copy()
+    gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
+
+    # Threshold to get binary mask of object
+    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    if contours:
+        largest = max(contours, key=cv2.contourArea)
+        M = cv2.moments(largest)
+
+        if M["m00"] != 0:
+            cx_local = int(M["m10"] / M["m00"])
+            cy_local = int(M["m01"] / M["m00"])
+
+            # Translate from local (cropped image) to global image coordinates
+            refined_x = x1 + cx_local
+            refined_y = y1 + cy_local
+
+            if debug:
+                debug_image = image.copy()
+                cv2.circle(debug_image, (refined_x, refined_y), 5, (0, 255, 0), -1)
+                cv2.rectangle(debug_image, (x1, y1), (x2, y2), (255, 0, 0), 2)
+                cv2.imshow("Refined Center", debug_image)
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
+
+            return (refined_x, refined_y)
+
+    # Fallback to box center if no contour/moments
+    fallback_x = int((x1 + x2) / 2)
+    fallback_y = int((y1 + y2) / 2)
+
+    if debug:
+        print("[Warning] No contour found, using box center.")
+    return (fallback_x, fallback_y)
