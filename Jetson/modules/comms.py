@@ -7,6 +7,7 @@ from dataclasses import dataclass
 @dataclass
 class CommunicationsConfig:
     ROS_TOPIC: str = 'PI_command'
+    ROS_TOPIC_PUB: str = 'PI_feedback'
     SERIAL_PORT: str = '/dev/ttyACM0'
     BAUD_RATE: int = 57600 # Check if matches with Arduino
     ACK_TIMEOUT: int = 60  # Seconds
@@ -17,19 +18,19 @@ def config() -> CommunicationsConfig:
 
 
 class ROSComm:
-    def __init__(self, topic=config().ROS_TOPIC, node_name='Jetson'):
+    def __init__(self, topic_receive=config().ROS_TOPIC, topic_pub=config().ROS_TOPIC_PUB, node_name='Jetson'):
         if not rclpy.ok():
             rclpy.init()
         self.node = rclpy.create_node(node_name)
-        self.publisher = self.node.create_publisher(String, topic, 10)
+        self.publisher = self.node.create_publisher(String, topic_pub, 10)
         self.subscriber = self.node.create_subscription(
             String,
-            topic,
+            topic_receive,
             self.receive_callback,
             10
         )
         self._latest_msg = None
-        self.node.get_logger().info(f"ROS initialized on topic '{topic}'")
+        self.node.get_logger().info(f"ROS initialized on topic '{topic_receive}'")
 
     def receive_callback(self, msg: String):
         print(f"[ROS] Recived: {msg.data}")
