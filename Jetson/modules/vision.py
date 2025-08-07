@@ -318,59 +318,78 @@ def video_loop(cap, stop_event):
 
 def refine_target_center(image, bbox, debug=False):
     """
-    Refines the target center inside a YOLO bounding box using cv2.moments()
-    to get the actual center of mass of the object.
+    Refine object center using HSV color masking inside the YOLO bounding box.
 
     Args:
         image (np.ndarray): Original BGR image.
-        bbox (tuple or list): YOLO bbox in format (x1, y1, x2, y2, conf, class_id)
-        debug (bool): If True, shows debug visualization.
+        bbox (tuple): (x1, y1, x2, y2, conf, class_id)
+        debug (bool): Show visualization for debugging
 
     Returns:
-        tuple: Refined (x, y) coordinates in full image space.
+        tuple: Refined (x, y) center in image coordinates
     """
-    x1, y1, x2, y2 = map(int, bbox[:4])  # extract and convert to int
+    x1, y1, x2, y2 = map(int, bbox[:4])
 
-    # Ensure crop stays within image bounds
+    # Ensure bounds stay within the image
     x1 = max(0, x1)
     y1 = max(0, y1)
     x2 = min(image.shape[1], x2)
     y2 = min(image.shape[0], y2)
 
+    # Crop the region of interest
     cropped = image[y1:y2, x1:x2].copy()
-    gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
+    hsv = cv2.cvtColor(cropped, cv2.COLOR_BGR2HSV)
 
-    # Threshold to get binary mask of object
-    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    # Define masks for red (two ranges), yellow, blue, black, and gold
+    mask = np.zeros(hsv.shape[:2], dtype=np.uint8)
 
-    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Red
+    mask_red1 = cv2.inRange(hsv, np.array([0, 100, 100]), np.array([10, 255, 255]))
+    mask_red2 = cv2.inRange(hsv, np.array([160, 100, 100]), np.array([180, 255, 255]))
+    mask = cv2.bitwise_or(mask, cv2.bitwise_or(mask_red1, mask_red2))
+
+    # Yellow
+    mask_yellow = cv2.inRange(hsv, np.array([20, 100, 100]), np.array([35, 255, 255]))
+    mask = cv2.bitwise_or(mask, mask_yellow)
+
+    # Blue
+    mask_blue = cv2.inRange(hsv, np.array([100, 150, 50]), np.array([130, 255, 255]))
+    mask = cv2.bitwise_or(mask, mask_blue)
+
+    # Black (low V)
+    mask_black = cv2.inRange(hsv, np.array([0, 0, 0]), np.array([180, 255, 50]))
+    mask = cv2.bitwise_or(mask, mask_black)
+
+    # Gold (muted yellow/orange range)
+    mask_gold = cv2.inRange(hsv, np.array([15, 80, 120]), np.array([30, 200, 255]))
+    mask = cv2.bitwise_or(mask, mask_gold)
+
+    # Get contours and calculate centroid
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     if contours:
         largest = max(contours, key=cv2.contourArea)
         M = cv2.moments(largest)
-
         if M["m00"] != 0:
-            cx_local = int(M["m10"] / M["m00"])
-            cy_local = int(M["m01"] / M["m00"])
-
-            # Translate from local (cropped image) to global image coordinates
-            refined_x = x1 + cx_local
-            refined_y = y1 + cy_local
+            cx = int(M["m10"] / M["m00"])
+            cy = int(M["m01"] / M["m00"])
+            refined_x = x1 + cx
+            refined_y = y1 + cy
 
             if debug:
-                debug_image = image.copy()
-                cv2.circle(debug_image, (refined_x, refined_y), 5, (0, 255, 0), -1)
-                cv2.rectangle(debug_image, (x1, y1), (x2, y2), (255, 0, 0), 2)
-                cv2.imshow("Refined Center", debug_image)
+                debug_img = image.copy()
+                cv2.circle(debug_img, (refined_x, refined_y), 5, (0, 255, 0), -1)
+                cv2.rectangle(debug_img, (x1, y1), (x2, y2), (255, 0, 0), 2)
+                cv2.imshow("Refined Center", debug_img)
                 cv2.waitKey(0)
                 cv2.destroyAllWindows()
 
             return (refined_x, refined_y)
 
-    # Fallback to box center if no contour/moments
+    # Fallback to YOLO box center
     fallback_x = int((x1 + x2) / 2)
     fallback_y = int((y1 + y2) / 2)
 
     if debug:
-        print("[Warning] No contour found, using box center.")
+        print("[Warning] No contours found. Using bounding box center.")
     return (fallback_x, fallback_y)
