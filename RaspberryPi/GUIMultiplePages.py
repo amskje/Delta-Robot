@@ -8,6 +8,7 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 import threading
+import os
 
 import time
 
@@ -423,6 +424,7 @@ if __name__ == "__main__":
     app = App()
 
     twist_publisher.register_handler("SETUP_FINISHED", lambda: app.after(0, lambda: app.show_frame(StartScreen)))
+    twist_publisher.register_handler("REBOOT", lambda: os.system('sudo reboot'))
 
     app.mainloop()
 
