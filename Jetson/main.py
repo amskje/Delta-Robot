@@ -58,6 +58,7 @@ def main():
                 arduino_ready = True
 
         # Poll RPi message
+        ROS.spin_once(timeout_sec=0.1)
         msg = ROS.get_latest_message()
         if not rpi_ready and msg == "RPi_READY":
             log("✅ RPi is ready.")
@@ -78,7 +79,7 @@ def main():
     state = RobotState.IDLE
     order = None 
 
-    ROS.send_message("SETUP_COMPLETE")
+    ROS.send_message("SETUP_FINISHED")
     log(" Setup complete. Sent confirmation to RPi.")  
 
     log("System initialized. Entering main loop...")
