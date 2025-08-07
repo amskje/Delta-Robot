@@ -370,11 +370,11 @@ def refine_center_by_ellipse(image, bbox, debug=False):
 
 
     # Convert to grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    gray_crop = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
 
     # Threshold to separate foreground (candies) from background
     # White pixels (~255) become 0, and darker areas become 255 (inverted)
-    _, mask = cv2.threshold(gray, 160, 255, cv2.THRESH_BINARY_INV)
+    _, mask = cv2.threshold(gray_crop, 160, 255, cv2.THRESH_BINARY_INV)
 
     # Optional: remove small noise
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
