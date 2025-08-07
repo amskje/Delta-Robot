@@ -172,7 +172,7 @@ def detect_target(target_class, config: VisionConfig, state: VisionState):
             continue
         
         bbox = (x1, y1, x2, y2, conf, class_id)
-        refined_center = refine_target_center(state.latest_frame, bbox, debug=False)
+        refined_center = refine_center_by_ellipse(state.latest_frame, bbox, debug=False)
 
 
         # Compute center in pixels
