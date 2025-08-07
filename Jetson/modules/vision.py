@@ -329,6 +329,36 @@ def refine_center_by_ellipse(image, bbox, debug=False):
         (int, int): Refined center coordinates (x, y)
     """
     x1, y1, x2, y2 = map(int, bbox[:4])
+
+    # Shave off pixels to avoid having the wrapper ends distorting the ellipse
+    width = x2 - x1
+    height = y2 - y1
+    aspect_ratio = width / height
+
+    # Shave ratios
+    shave_ratio_x = 0.15  # 15% of width
+    shave_ratio_y = 0.15  # 15% of height
+
+    # Default trims
+    trim_x = int(width * shave_ratio_x)
+    trim_y = int(height * shave_ratio_y)
+
+    # Adjust trimming based on aspect ratio
+    if aspect_ratio > 1.5:
+        # Wider than tall → shave X only
+        x1 += trim_x
+        x2 -= trim_x
+    elif aspect_ratio < 0.67:
+        # Taller than wide → shave Y only
+        y1 += trim_y
+        y2 -= trim_y
+    else:
+        # Roughly square → shave both
+        x1 += trim_x
+        x2 -= trim_x
+        y1 += trim_y
+        y2 -= trim_y
+
     x1 = max(0, x1)
     y1 = max(0, y1)
     x2 = min(image.shape[1], x2)
@@ -336,6 +366,8 @@ def refine_center_by_ellipse(image, bbox, debug=False):
 
     cropped = image[y1:y2, x1:x2].copy()
     hsv = cv2.cvtColor(cropped, cv2.COLOR_BGR2HSV)
+
+
 
     # Define masks for red (two ranges), yellow, blue, black, and gold
     mask = np.zeros(hsv.shape[:2], dtype=np.uint8)
@@ -377,15 +409,21 @@ def refine_center_by_ellipse(image, bbox, debug=False):
             refined_y = y1 + int(cy_local)
 
             if debug:
-                debug_img = image.copy()
-                cv2.circle(debug_img, (refined_x, refined_y), 5, (0, 255, 0), -1)
-                cv2.rectangle(debug_img, (x1, y1), (x2, y2), (255, 0, 0), 2)
-                cv2.ellipse(debug_img, (refined_x, refined_y),
-                            (int(MA/2), int(ma/2)), angle, 0, 360, (0, 255, 255), 2)
+                # Convert binary mask to 3-channel grayscale for overlay
+                mask_rgb = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
 
-                # Show both the mask and the annotated image
-                cv2.imshow("Mask", mask)
-                cv2.imshow("Ellipse Debug", debug_img)
+                # Optional: tint the mask (e.g., green channel) for visibility
+                tinted_mask = cv2.multiply(mask_rgb, np.array([0, 1, 0], dtype=np.uint8))
+
+                # Blend cropped image with mask
+                overlay = cv2.addWeighted(cropped, 0.7, tinted_mask, 0.3, 0)
+
+                # Draw the fitted ellipse on the overlay
+                cv2.ellipse(overlay, ellipse, (0, 255, 255), 2)  # yellow ellipse
+                cv2.circle(overlay, (int(cx_local), int(cy_local)), 4, (0, 0, 255), -1)  # red centroid
+
+                # Show the final image
+                cv2.imshow("Overlay: Cropped Image + Mask + Ellipse", overlay)
                 cv2.waitKey(0)
                 cv2.destroyAllWindows()
 
