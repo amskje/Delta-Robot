@@ -428,7 +428,9 @@ if __name__ == "__main__":
     app = App()
 
     twist_publisher.register_handler("SETUP_FINISHED", lambda: app.after(0, lambda: app.show_frame(StartScreen)))
-    twist_publisher.register_handler("REBOOT", lambda: app.after(0, lambda: reboot_app(app)))
+    twist_publisher.register_handler("REBOOT", lambda: app.after(0, lambda: app.show_frame(ManualScreen)))
+
+    #twist_publisher.register_handler("REBOOT", lambda: app.after(0, lambda: reboot_app(app)))
 
 
 
