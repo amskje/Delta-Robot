@@ -172,7 +172,7 @@ def detect_target(target_class, config: VisionConfig, state: VisionState):
             continue
         
         bbox = (x1, y1, x2, y2, conf, class_id)
-        refined_center = refine_target_center(state.latest_frame, bbox, debug=False)
+        refined_center = refine_center_by_ellipse(state.latest_frame, bbox, debug=False)
 
 
         # Compute center in pixels
@@ -316,27 +316,24 @@ def video_loop(cap, stop_event):
     cv2.destroyAllWindows()
 
 
-def refine_target_center(image, bbox, debug=False):
+def refine_center_by_ellipse(image, bbox, debug=False):
     """
-    Refine object center using HSV color masking inside the YOLO bounding box.
+    Refines target center by fitting an ellipse to the masked object region.
 
     Args:
-        image (np.ndarray): Original BGR image.
-        bbox (tuple): (x1, y1, x2, y2, conf, class_id)
-        debug (bool): Show visualization for debugging
+        image (np.ndarray): Full BGR image.
+        bbox (tuple): YOLO box (x1, y1, x2, y2, conf, class_id)
+        debug (bool): Show visualization
 
     Returns:
-        tuple: Refined (x, y) center in image coordinates
+        (int, int): Refined center coordinates (x, y)
     """
     x1, y1, x2, y2 = map(int, bbox[:4])
-
-    # Ensure bounds stay within the image
     x1 = max(0, x1)
     y1 = max(0, y1)
     x2 = min(image.shape[1], x2)
     y2 = min(image.shape[0], y2)
 
-    # Crop the region of interest
     cropped = image[y1:y2, x1:x2].copy()
     hsv = cv2.cvtColor(cropped, cv2.COLOR_BGR2HSV)
 
@@ -364,32 +361,35 @@ def refine_target_center(image, bbox, debug=False):
     mask_gold = cv2.inRange(hsv, np.array([15, 80, 120]), np.array([30, 200, 255]))
     mask = cv2.bitwise_or(mask, mask_gold)
 
-    # Get contours and calculate centroid
+    # Optional: clean up mask
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+
+    # Find contours
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     if contours:
         largest = max(contours, key=cv2.contourArea)
-        M = cv2.moments(largest)
-        if M["m00"] != 0:
-            cx = int(M["m10"] / M["m00"])
-            cy = int(M["m01"] / M["m00"])
-            refined_x = x1 + cx
-            refined_y = y1 + cy
+        if len(largest) >= 5:
+            ellipse = cv2.fitEllipse(largest)
+            (cx_local, cy_local), (MA, ma), angle = ellipse
+            refined_x = x1 + int(cx_local)
+            refined_y = y1 + int(cy_local)
 
             if debug:
                 debug_img = image.copy()
                 cv2.circle(debug_img, (refined_x, refined_y), 5, (0, 255, 0), -1)
                 cv2.rectangle(debug_img, (x1, y1), (x2, y2), (255, 0, 0), 2)
-                cv2.imshow("Refined Center", debug_img)
+                cv2.ellipse(debug_img, (refined_x, refined_y),
+                            (int(MA/2), int(ma/2)), angle, 0, 360, (0, 255, 255), 2)
+
+                # Show both the mask and the annotated image
+                cv2.imshow("Mask", mask)
+                cv2.imshow("Ellipse Debug", debug_img)
                 cv2.waitKey(0)
                 cv2.destroyAllWindows()
 
-            return (refined_x, refined_y)
+            return refined_x, refined_y
 
-    # Fallback to YOLO box center
-    fallback_x = int((x1 + x2) / 2)
-    fallback_y = int((y1 + y2) / 2)
-
-    if debug:
-        print("[Warning] No contours found. Using bounding box center.")
-    return (fallback_x, fallback_y)
+    # Fallback: center of bounding box
+    return (int((x1 + x2) / 2), int((y1 + y2) / 2))
