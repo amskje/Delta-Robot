@@ -407,7 +407,9 @@ class AutomaticScreen(tk.Frame):
         self.dot_count = (self.dot_count + 1) % 4  # Cycles through 0,1,2,3
         self.after(500, self.animate_dots)  # Call again after 500ms
 
-
+def reboot_app():
+    print("🛑 REBOOT message received — exiting app.")
+    app.quit()
 
 
 # --- Main ---
@@ -424,7 +426,8 @@ if __name__ == "__main__":
     app = App()
 
     twist_publisher.register_handler("SETUP_FINISHED", lambda: app.after(0, lambda: app.show_frame(StartScreen)))
-    twist_publisher.register_handler("REBOOT", lambda: sys.exit(1))
+    twist_publisher.register_handler("REBOOT", lambda: app.after(0, reboot_app))
+
 
     app.mainloop()
 
