@@ -410,6 +410,8 @@ class AutomaticScreen(tk.Frame):
 def reboot_app():
     print("🛑 REBOOT message received — exiting app.")
     app.quit()
+    app.destroy()
+    sys.exit(1)
 
 
 # --- Main ---
@@ -426,7 +428,8 @@ if __name__ == "__main__":
     app = App()
 
     twist_publisher.register_handler("SETUP_FINISHED", lambda: app.after(0, lambda: app.show_frame(StartScreen)))
-    twist_publisher.register_handler("REBOOT", lambda: app.after(0, reboot_app))
+    twist_publisher.register_handler("REBOOT", lambda: app.after(0, lambda: reboot_app(app)))
+
 
 
     app.mainloop()
