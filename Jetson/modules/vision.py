@@ -172,7 +172,7 @@ def detect_target(target_class, config: VisionConfig, state: VisionState):
             continue
         
         bbox = (x1, y1, x2, y2, conf, class_id)
-        refined_center = refine_center_by_ellipse(state.latest_frame, bbox, debug=False)
+        refined_center = refine_center_by_ellipse(state.latest_frame, bbox, debug=True)
 
 
         # Compute center in pixels
@@ -374,7 +374,7 @@ def refine_center_by_ellipse(image, bbox, debug=False):
 
     # Threshold to separate foreground (candies) from background
     # White pixels (~255) become 0, and darker areas become 255 (inverted)
-    _, mask = cv2.threshold(gray, 220, 255, cv2.THRESH_BINARY_INV)
+    _, mask = cv2.threshold(gray, 160, 255, cv2.THRESH_BINARY_INV)
 
     # Optional: remove small noise
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
@@ -395,11 +395,15 @@ def refine_center_by_ellipse(image, bbox, debug=False):
                 # Convert binary mask to 3-channel grayscale for overlay
                 mask_rgb = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
 
-                # Optional: tint the mask (e.g., green channel) for visibility
-                tinted_mask = cv2.multiply(mask_rgb, np.array([0, 1, 0], dtype=np.uint8))
+                # Tint green only
+                tinted_mask = np.zeros_like(mask_rgb)
+                tinted_mask[:, :, 1] = mask_rgb[:, :, 1]
 
-                # Blend cropped image with mask
-                overlay = cv2.addWeighted(cropped, 0.7, tinted_mask, 0.3, 0)
+                # Crop the mask the same way as the image
+                tinted_crop = tinted_mask[y1:y2, x1:x2]
+
+                # Blend cropped region with tinted mask
+                overlay = cv2.addWeighted(cropped, 0.7, tinted_crop, 0.3, 0)
 
                 # Draw the fitted ellipse on the overlay
                 cv2.ellipse(overlay, ellipse, (0, 255, 255), 2)  # yellow ellipse
