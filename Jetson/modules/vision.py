@@ -369,32 +369,15 @@ def refine_center_by_ellipse(image, bbox, debug=False):
 
 
 
-    # Define masks for red (two ranges), yellow, blue, black, and gold
-    mask = np.zeros(hsv.shape[:2], dtype=np.uint8)
+    # Convert to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # Red
-    mask_red1 = cv2.inRange(hsv, np.array([0, 100, 100]), np.array([10, 255, 255]))
-    mask_red2 = cv2.inRange(hsv, np.array([160, 100, 100]), np.array([180, 255, 255]))
-    mask = cv2.bitwise_or(mask, cv2.bitwise_or(mask_red1, mask_red2))
+    # Threshold to separate foreground (candies) from background
+    # White pixels (~255) become 0, and darker areas become 255 (inverted)
+    _, mask = cv2.threshold(gray, 220, 255, cv2.THRESH_BINARY_INV)
 
-    # Yellow
-    mask_yellow = cv2.inRange(hsv, np.array([20, 100, 100]), np.array([35, 255, 255]))
-    mask = cv2.bitwise_or(mask, mask_yellow)
-
-    # Blue
-    mask_blue = cv2.inRange(hsv, np.array([100, 150, 50]), np.array([130, 255, 255]))
-    mask = cv2.bitwise_or(mask, mask_blue)
-
-    # Black (low V)
-    mask_black = cv2.inRange(hsv, np.array([0, 0, 0]), np.array([180, 255, 50]))
-    mask = cv2.bitwise_or(mask, mask_black)
-
-    # Gold (muted yellow/orange range)
-    mask_gold = cv2.inRange(hsv, np.array([15, 80, 120]), np.array([30, 200, 255]))
-    mask = cv2.bitwise_or(mask, mask_gold)
-
-    # Optional: clean up mask
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
+    # Optional: remove small noise
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
     # Find contours
