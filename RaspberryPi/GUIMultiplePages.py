@@ -332,12 +332,14 @@ class AutomaticScreen(tk.Frame):
         self.loading_popup.title("Plukker Twist")
         self.loading_popup.geometry("400x200")
         self.loading_popup.configure(bg="#4c4c4c")
-        self.loading_popup.transient(self)
+
+        self.loading_popup.update_idletasks()
+        self.loading_popup.lift()
+        self.loading_popup.attributes("-topmost", True)
+        self.loading_popup.focus_force()
         self.loading_popup.grab_set()
 
         # Center popup on screen
-        self.update_idletasks()
-
         popup_width = 400
         popup_height = 200
 
@@ -347,7 +349,7 @@ class AutomaticScreen(tk.Frame):
         x = (screen_width // 2) - (popup_width // 2)
         y = (screen_height // 2) - (popup_height // 2)
 
-        self.loading_popup.geometry(f"{x}+{y}")
+        self.loading_popup.geometry(f"{popup_width}x{popup_height}+{x}+{y}")
 
         tk.Label(self.loading_popup,
                  text=f"Henter {twist_name}",
