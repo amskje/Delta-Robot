@@ -380,8 +380,12 @@ def refine_center_by_ellipse(image, bbox, debug=False):
                 debug_img = image.copy()
                 cv2.circle(debug_img, (refined_x, refined_y), 5, (0, 255, 0), -1)
                 cv2.rectangle(debug_img, (x1, y1), (x2, y2), (255, 0, 0), 2)
-                cv2.ellipse(debug_img, (int(refined_x), int(refined_y)), (int(MA/2), int(ma/2)), angle, 0, 360, (0, 255, 255), 2)
-                cv2.imshow("Ellipse Refinement", debug_img)
+                cv2.ellipse(debug_img, (refined_x, refined_y),
+                            (int(MA/2), int(ma/2)), angle, 0, 360, (0, 255, 255), 2)
+
+                # Show both the mask and the annotated image
+                cv2.imshow("Mask", mask)
+                cv2.imshow("Ellipse Debug", debug_img)
                 cv2.waitKey(0)
                 cv2.destroyAllWindows()
 
