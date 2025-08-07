@@ -399,11 +399,8 @@ def refine_center_by_ellipse(image, bbox, debug=False):
                 tinted_mask = np.zeros_like(mask_rgb)
                 tinted_mask[:, :, 1] = mask_rgb[:, :, 1]
 
-                # Crop the mask the same way as the image
-                tinted_crop = tinted_mask[y1:y2, x1:x2]
-
                 # Blend cropped region with tinted mask
-                overlay = cv2.addWeighted(cropped, 0.7, tinted_crop, 0.3, 0)
+                overlay = cv2.addWeighted(cropped, 0.7, tinted_mask, 0.3, 0)
 
                 # Draw the fitted ellipse on the overlay
                 cv2.ellipse(overlay, ellipse, (0, 255, 255), 2)  # yellow ellipse
