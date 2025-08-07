@@ -347,8 +347,7 @@ class AutomaticScreen(tk.Frame):
         x = (screen_width // 2) - (popup_width // 2)
         y = (screen_height // 2) - (popup_height // 2)
 
-        self.loading_popup.geometry(f"{popup_width}x{popup_height}+{x}+{y}")
-
+        self.loading_popup.geometry(f"{x}+{y}")
 
         tk.Label(self.loading_popup,
                  text=f"Henter {twist_name}",
