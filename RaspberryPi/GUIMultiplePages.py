@@ -336,7 +336,7 @@ class AutomaticScreen(tk.Frame):
         self.loading_popup.grab_set()
 
         # Center popup on screen
-        self.update_idletasks()
+        self.loading_popup.update_idletasks()
         x = (self.winfo_screenwidth() // 2) - (400 // 2)
         y = (self.winfo_screenheight() // 2) - (200 // 2)
         self.loading_popup.geometry(f"+{x}+{y}")
