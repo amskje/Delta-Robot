@@ -105,7 +105,7 @@ class App(tk.Tk):
 
         # Use geometry instead of fullscreen
         self.geometry(f"{screen_width}x{screen_height}+0+0")
-        self.overrideredirect(True)  # optional: remove title bar
+        #self.overrideredirect(True)  # optional: remove title bar
         print(f"Detected screen size: {screen_width}x{screen_height}")
 
         self.bind("<Escape>", lambda event: self.quit())
@@ -337,11 +337,11 @@ class AutomaticScreen(tk.Frame):
 
         # Highlight the popup with a border
         self.loading_popup.configure(bg="red", highlightbackground="white", highlightthickness=2)
-        
-        self.loading_popup.lift()
+
         self.loading_popup.attributes("-topmost", True)
+        self.loading_popup.lift()
         #self.loading_popup.focus_force()
-        #self.loading_popup.grab_set()
+        self.loading_popup.grab_set()
 
         # Center popup on screen
         popup_width = 400
