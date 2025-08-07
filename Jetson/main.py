@@ -119,11 +119,21 @@ def main():
             matches = []
             retry_count = 0
 
-            # Retry YOLO detection up to 15 times
-            while not matches and retry_count < 15:
-                matches = vision.detect_target(order, vision_conf, vision_state)                
+            # Retry YOLO detection up to 4 times
+            while not matches and retry_count < 4:
+                matches = vision.detect_target(order, vision_conf, vision_state)
                 if not matches:
                     log(f"No target found on attempt {retry_count + 1}. Retrying...")
+                    
+                    # Move robot to a different position for the next attempt
+                    if retry_count == 0:
+                        controller.go_to_pos(move_pos=(120, 80, -305))
+                    if retry_count == 1:
+                        controller.go_to_pos(move_pos=(120, -80, -305))
+                    if retry_count == 2:
+                        controller.go_to_pos(move_pos=(-120, -80, -305))
+                    if retry_count == 3:
+                        controller.go_to_pos(move_pos=(-120, 80, -305))
                     retry_count += 1
                     time.sleep(1)
 
