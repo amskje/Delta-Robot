@@ -105,7 +105,7 @@ class App(tk.Tk):
 
         # Use geometry instead of fullscreen
         self.geometry(f"{screen_width}x{screen_height}+0+0")
-        #self.overrideredirect(True)  # optional: remove title bar
+        self.overrideredirect(True)  # optional: remove title bar
         print(f"Detected screen size: {screen_width}x{screen_height}")
 
         self.bind("<Escape>", lambda event: self.quit())
@@ -243,8 +243,6 @@ class AutomaticScreen(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg=BG_color)
         self.controller = controller
-        self.loading_popup = None  # Track popup window
-        self.loading_label = None
         self.waiting_animation_running = False
         self.dot_count = 0
 
@@ -315,111 +313,83 @@ class AutomaticScreen(tk.Frame):
         # Register GUI callback with ROS node
         #twist_publisher.register_handler("PICKED_UP", self.twist_picked_up)
 
+        # Transparent overlay for blocking buttons in the background
+        self.blocker = tk.Frame(self, bg="", width=1, height=1)
+        self.blocker.place_forget()
+        self.blocker.bind("<Button-1>", lambda e: "break")  # absorb clicksself.blocker = tk.Frame(self, bg="", width=1, height=1)
+        self.blocker.place_forget()
+        self.blocker.bind("<Button-1>", lambda e: "break")  # absorb clicks
+
+        # Create the loading overlay frame
+
+        self.loading_overlay = tk.Frame(self, bg="#4c4c4c")
+        self.loading_overlay.place_forget()  # Start hidden
+
+        # Popup dimensions
+        popup_width = 400
+        popup_height = 200
+
+        # Centered placement
+        self.loading_overlay.place(relx=0.5, rely=0.5, anchor="center",
+                                width=popup_width, height=popup_height)
+
+        # Content inside the frame
+        self.loading_label_title = tk.Label(self.loading_overlay, text="Henter ...",
+                                            font=("Helvetica", 18), fg="white", bg="#4c4c4c")
+        self.loading_label_title.pack(pady=(20, 10))
+
+        self.loading_label_status = tk.Label(self.loading_overlay, text="Vennligst vent...",
+                                            font=("Helvetica", 14), fg="white", bg="#4c4c4c")
+        self.loading_label_status.pack()
+
+        tk.Button(self.loading_overlay, text="Avbryt", command=self.abort_and_close_overlay,
+                font=("Helvetica", 12), bg="#cc0000", fg="white", width=15,
+                activebackground="#990000", activeforeground="white",
+                borderwidth=0, highlightthickness=0, relief="flat").pack(pady=10)
+
 
 
 
     def on_button_click(self, twist):
         if send_message:
             twist_publisher.send_msg(twist.name)
-            self.show_loading_popup(twist.name)
+            self.show_loading_overlay(twist.name)
 
 
-    def show_loading_popup(self, twist_name):
-        if self.loading_popup is not None:
-            return  # Already shown
-
-        self.loading_popup = tk.Toplevel(self)
-        self.loading_popup.title("Plukker Twist")
-        self.loading_popup.geometry("400x200")
-        self.loading_popup.configure(bg="#4c4c4c")
-
-        self.loading_popup.update_idletasks()
-
-        # Highlight the popup with a border
-        self.loading_popup.configure(bg="red", highlightbackground="white", highlightthickness=2)
-
-        self.loading_popup.attributes("-topmost", True)
-        self.loading_popup.lift()
-        #self.loading_popup.focus_force()
-        self.loading_popup.grab_set()
-
-        # Center popup on screen
-        popup_width = 400
-        popup_height = 200
-
-        screen_width = 800
-        screen_height = 480
-
-        x = (screen_width // 2) - (popup_width // 2)
-        y = (screen_height // 2) - (popup_height // 2)
-
-
-        self.loading_popup.geometry(f"{popup_width}x{popup_height}+{x}+{y}")
-
-        tk.Label(self.loading_popup,
-                 text=f"Henter {twist_name}",
-                 font=("Helvetica", 18),
-                 fg="white",
-                 bg="#4c4c4c").pack(expand=True, pady=20)
-
-        self.loading_label = tk.Label(self.loading_popup,
-                                      text="Vennligst vent...",
-                                      font=("Helvetica", 14),
-                                      fg="white",
-                                      bg="#4c4c4c")
-        self.loading_label.pack()
-
-
-        self.waiting_animation_running = True
+    def show_loading_overlay(self, twist_name):
+        self.loading_label_title.config(text=f"Henter {twist_name}")
         self.dot_count = 0
-        self.animate_dots()
+        self.waiting_animation_running = True
 
-        # Back/Abort button
-        tk.Button(self.loading_popup,
-            text="Avbryt",
-            command=self.abort_and_close_popup,
-            font=("Helvetica", 12),     
-            bg="#cc0000",
-            fg="white",
-            activebackground="#990000",
-            activeforeground="white",
-            borderwidth=0,
-            highlightthickness=0,
-            relief="flat",
-            width=15,                   
-        ).pack(pady=10)
+        # Make the blocker cover the whole window
+        self.blocker.place(relx=0, rely=0, relwidth=1, relheight=1)
+        self.blocker.lift()
+
+        # Lift the overlay above the blocker
+        self.loading_overlay.lift()
+        self.loading_overlay.place(relx=0.5, rely=0.5, anchor="center")
+        self.animate_dots_overlay()
+
 
     def twist_picked_up(self):
         # Called from ROS thread; use `after` to safely update GUI
-        self.after(0, self.update_loading_popup)
+        print("Twist picked up, closing overlay.")
+        #LEGGE TIL HER
 
-    def update_loading_popup(self):
-        if self.loading_popup:
-            self.waiting_animation_running = False  # stop dots
-            self.loading_label.config(text="Twist plukket opp!")
-            self.loading_popup.after(5000, self.close_loading_popup)  # Auto-close after 5 sec
-
-    def close_loading_popup(self):
-        if self.loading_popup:
-            self.loading_popup.destroy()
-            self.loading_popup = None
-
-    def abort_and_close_popup(self):
+    def abort_and_close_overlay(self):
         if send_message:
             twist_publisher.send_msg("ABORT")
-        self.waiting_animation_running = False  # stop dots
-        self.close_loading_popup()
-        self.controller.show_frame(AutomaticScreen)
+        self.waiting_animation_running = False
+        self.loading_overlay.place_forget()
+        self.blocker.place_forget()
 
-    def animate_dots(self):
-        if not self.waiting_animation_running or not self.loading_label:
+    def animate_dots_overlay(self):
+        if not self.waiting_animation_running:
             return
-
-        dots = "." * self.dot_count
-        self.loading_label.config(text=f"Vennligst vent{dots}")
-
-        self.dot_count = (self.dot_count + 1) % 4  # Cycles through 0,1,2,3
-        self.after(500, self.animate_dots)  # Call again after 500ms
+        dots = "." * (self.dot_count % 4)
+        self.loading_label_status.config(text=f"Vennligst vent{dots}")
+        self.dot_count += 1
+        self.after(500, self.animate_dots_overlay)
 
 def reboot_app(app_to_close):
     print("🛑 REBOOT message received — exiting app.")
