@@ -68,29 +68,48 @@ class SerialComm:
         self.conn.write(full_msg.encode())
         print(f"[Serial] Sent: {full_msg.strip()}")
 
+    
     def wait_for_ack(self, expected_ack='OK', timeout=config().ACK_TIMEOUT):
+        """
+        Waits for a specific ACK message from serial.
+        Returns:
+            True if expected ACK is received.
+            String of unexpected message if something else is received.
+            False if timeout occurs.
+        """
         start = time.time()
         while time.time() - start < timeout:
             if self.conn.in_waiting > 0:
-                line = self.conn.readline().decode().strip()
-                if line == expected_ack:
-                    print("[Serial] ACK received.")
-                    return True
-                else:
-                    return line
-        print("[Serial] ACK timeout.")
+                try:
+                    line = self.conn.readline().decode().strip()
+                    if not line:
+                        continue
+                    if line == expected_ack:
+                        print("[Serial]  ACK received.")
+                        return True
+                    elif line.startswith("STATE"):
+                        print (f"[Serial] Recived message: {line}")
+                        continue
+                    else:
+                        print(f"[Serial]  Unexpected response: {line}")
+                        return line
+                except UnicodeDecodeError:
+                    print("[Serial]  Decode error on incoming serial data")
+                    continue
+        print("[Serial] ⏰ ACK timeout.")
         return False
-    
+
+
     def read_line(self):
         return self.conn.readline().decode().strip()
 
     def in_waiting(self):
         return self.conn.in_waiting
     
-    def read_serial_responses(serial_comm):
-        while serial_comm.in_waiting():
+    def read_serial_responses(self):
+        while self.in_waiting():
             try:
-                line = serial_comm.read_line()
+                line = self.read_line()
                 if line:
                     print(f"[Arduino]: {line}")
             except UnicodeDecodeError:
