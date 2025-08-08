@@ -245,6 +245,9 @@ class AutomaticScreen(tk.Frame):
         self.controller = controller
         self.waiting_animation_running = False
         self.dot_count = 0
+        # Popup dimensions
+        self.popup_width = 400
+        self.popup_height = 200
 
         # Text in top left corner
         tk.Label(self, text="Auto", font=("Helvetica", 16, "bold"), fg="#cc0000", bg=BG_color).place(x=20, y=10)
@@ -325,14 +328,6 @@ class AutomaticScreen(tk.Frame):
         self.loading_overlay = tk.Frame(self, bg="#4c4c4c")
         self.loading_overlay.place_forget()  # Start hidden
 
-        # Popup dimensions
-        popup_width = 400
-        popup_height = 200
-
-        # Centered placement
-        self.loading_overlay.place(relx=0.5, rely=0.5, anchor="center",
-                                width=popup_width, height=popup_height)
-
         # Content inside the frame
         self.loading_label_title = tk.Label(self.loading_overlay, text="Henter ...",
                                             font=("Helvetica", 18), fg="white", bg="#4c4c4c")
@@ -367,7 +362,8 @@ class AutomaticScreen(tk.Frame):
 
         # Lift the overlay above the blocker
         self.loading_overlay.lift()
-        self.loading_overlay.place(relx=0.5, rely=0.5, anchor="center")
+        self.loading_overlay.place(relx=0.5, rely=0.5, anchor="center",
+                                width=self.popup_width, height=self.popup_height)
         self.animate_dots_overlay()
 
 
