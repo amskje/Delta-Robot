@@ -29,7 +29,6 @@ enum State {
 };
 
 State currentState = IDLE;
-bool reset = false;
 bool abortRequested = false;
 
 String inputBuffer = "";
@@ -80,6 +79,8 @@ bool stableLimit3State = HIGH;
 //Drop off set up
 bool dropoffPlanned = false;
 
+bool pickupComplete = false;
+
 long stepper_positions[3];  // target steps for each motor
 
 void reset_variables() {
@@ -87,10 +88,8 @@ void reset_variables() {
   current_index = 0;
   num_waypoints_down = 0;
   current_index_down = 0;
-
+  dropoffPlanned = false;
   receivingPickdown = false;
-
-  abortRequested = false;
 
   for (int i = 0; i < MAX_WAYPOINTS; i++) {
     positions[i][0] = 0;
@@ -105,14 +104,22 @@ void reset_variables() {
 
 
 bool checkSensor() {
-  int rawADC = analogRead(SENSOR);
-  float voltage = rawADC * Vcc / 1023.0; // 1023 becuas 10 bit analog to digital converter on arduino
-  float current_mA = voltage / R * 1000.0; 
-  float pressure_bar = (current_mA - 4.0) * (4.0 / 16.0);  // Scale 4–20 mA to 0–4 bar
-  // it is a round 0,64 bar when the candy is lifted
+  const int numSamples = 10;
+  float totalPressure = 0.0;
 
-  return pressure_bar < pickupThreshold;
+  for (int i = 0; i < numSamples; i++) {
+    int rawADC = analogRead(SENSOR);
+    float voltage = rawADC * Vcc / 1023.0;
+    float current_mA = voltage / R * 1000.0;
+    float pressure_bar = (current_mA - 4.0) * (4.0 / 16.0);
+    totalPressure += pressure_bar;
+    delayMicroseconds(500); // total delay = 5ms, fast enough
+  }
+
+  float avgPressure = totalPressure / numSamples;
+  return avgPressure < pickupThreshold;
 }
+
 
 
 bool debounceRead(int pin, unsigned long &lastChangeTime, bool &lastStableState) {
@@ -133,14 +140,17 @@ void checkLimitSwitches() {
   if (limit1Triggered || limit2Triggered || limit3Triggered) {
     stopAllMotors();
     digitalWrite(PUMP, LOW); // Stop the pump if running
-    homeAllMotors();
     Serial.println("ABORTED");
+    reset_variables();
+    homeAllMotors();
   }
 }
 
 void homeAllMotors() {
   stopAllMotors();
-
+  motor1.setMaxSpeed(maxSpeed);
+  motor2.setMaxSpeed(maxSpeed);
+  motor3.setMaxSpeed(maxSpeed);
   // Move all motors toward their limits simultaneously
   motor1.move(-2000);  // move far enough to ensure hitting limit
   motor2.move(-2000);
@@ -195,12 +205,18 @@ bool motorsRunning() {
 }
 
 
-void moveToPosition(int idx, int positionArray[][3]) {
+void moveToPosition(int idx, int positionArray[][3], float speed) {
+  motor1.setMaxSpeed(speed);
+  motor2.setMaxSpeed(speed);
+  motor3.setMaxSpeed(speed);
+
   stepper_positions[0] = positionArray[idx][0];
   stepper_positions[1] = positionArray[idx][1];
   stepper_positions[2] = positionArray[idx][2];
 
   steppers.moveTo(stepper_positions);
+
+  Serial.println("STATE SPEED: " + String(speed, 2) + " Actual speed: " + String(motor1.speed(), 2));
 }
 
 void stopAllMotors() {
@@ -228,6 +244,7 @@ void readSerialMessage() {
     }
     else if (inputBuffer == "DOWN") {
       receivingPickdown = true;
+      pickupComplete = false;
       Serial.println("READY");
     }
     else if (inputBuffer == "DROPP") {
@@ -261,11 +278,9 @@ void readSerialMessage() {
     }
     else if (inputBuffer == "GO" && currentState == IDLE) {
       if (waypoint_count > 0) {
-        motor1.setMaxSpeed(maxSpeed);
-        motor2.setMaxSpeed(maxSpeed);
-        motor3.setMaxSpeed(maxSpeed);
-        moveToPosition(current_index++, positions);  // Start first move immediately
+        moveToPosition(current_index++, positions, maxSpeed);  // Start first move immediately
         currentState = RUNNING;
+        Serial.println("STATE RUNNING");
       } 
     }
     else if (inputBuffer == "ABORT") {
@@ -314,6 +329,16 @@ void loop() {
   // Read Serial
   readSerialMessage();
 
+  if (abortRequested) {
+    stopAllMotors();
+    reset_variables();
+    currentState = IDLE;
+    Serial.println("STATE IDLE");
+    abortRequested = false;
+    homeAllMotors();
+    Serial.println("ABORTED");
+  }
+
   switch (currentState) {
     
   case IDLE:
@@ -335,12 +360,11 @@ void loop() {
       current_index_down = num_waypoints_down;
 
       if (waypoint_count > 0) {
-        motor1.setMaxSpeed(maxSpeed/3);  // Move up at halv speed
-        motor2.setMaxSpeed(maxSpeed/3);
-        motor3.setMaxSpeed(maxSpeed/3);
-        moveToPosition(waypoint_count - 1, positions);
+        moveToPosition(waypoint_count - 1, positions, maxSpeed/3);
       }
+      pickupComplete = true;
       currentState = RUNNING;
+      Serial.println("STATE RUNNING");
       break;
     }
     
@@ -349,38 +373,28 @@ void loop() {
           motor2.distanceToGo() < lookahead_threshold_pick &&
           motor3.distanceToGo() < lookahead_threshold_pick) {
 
-          motor1.setMaxSpeed(max(pickupSpeed - current_index_down*100, minSpeed));
-          motor2.setMaxSpeed(max(pickupSpeed - current_index_down*100, minSpeed));
-          motor3.setMaxSpeed(max(pickupSpeed - current_index_down*100, minSpeed));
-
-          moveToPosition(current_index_down++, pickdown_positions);
+          moveToPosition(current_index_down++, pickdown_positions, max(pickupSpeed - current_index_down*100, minSpeed));
       }
     } else if (current_index_down == num_waypoints_down) {
       if (waypoint_count > 0) {
-        motor1.setMaxSpeed(maxSpeed);
-        motor2.setMaxSpeed(maxSpeed);
-        motor3.setMaxSpeed(maxSpeed);
-        moveToPosition(waypoint_count - 1, positions);
+        moveToPosition(waypoint_count - 1, positions, maxSpeed);
       }
 
       Serial.println("NOT_PICKED_UP");
       digitalWrite(PUMP, LOW);
+      reset_variables();
       current_index_down++;  // prevents repeating this block
       currentState = RUNNING;
+      Serial.println("STATE RUNNING");
     }
     break;
 
 
 case RUNNING:
-  if (abortRequested) {
-    stopAllMotors();
-    reset_variables();
-    currentState = IDLE;
-    abortRequested = false;
-    homeAllMotors();
-    Serial.println("ABORTED");
-    break;
-  }
+  motor1.setMaxSpeed(maxSpeed);
+  motor2.setMaxSpeed(maxSpeed);
+  motor3.setMaxSpeed(maxSpeed);
+
 
   // Check if the target is dropped
   if (dropoffPlanned && !checkSensor()) {
@@ -388,6 +402,7 @@ case RUNNING:
     reset_variables();
     digitalWrite(PUMP, LOW);
     currentState = IDLE;
+    Serial.println("STATE IDLE");
   }
 
   // ───── LOOKAHEAD for all but the last waypoint ─────
@@ -396,7 +411,7 @@ case RUNNING:
       motor2.distanceToGo() < lookahead_threshold &&
       motor3.distanceToGo() < lookahead_threshold) {
 
-    moveToPosition(current_index++, positions);
+    moveToPosition(current_index++, positions, maxSpeed);
   }
 
   // ───── All Waypoints Done ─────
@@ -405,8 +420,9 @@ case RUNNING:
            motor2.distanceToGo() == 0 &&
            motor3.distanceToGo() == 0) {
 
-    if (current_index_down < num_waypoints_down) {
+    if (!pickupComplete && current_index_down < num_waypoints_down) {
       currentState = PICKING_UP;
+      Serial.println("STATE PICKING_UP");
       motor1.setMaxSpeed(pickupSpeed);
       motor2.setMaxSpeed(pickupSpeed);
       motor3.setMaxSpeed(pickupSpeed);
@@ -420,6 +436,7 @@ case RUNNING:
       Serial.println("DONE");
       reset_variables();
       currentState = IDLE;
+      Serial.println("STATE IDLE");
     }
   }
 
@@ -430,6 +447,7 @@ case RUNNING:
   default:
     Serial.println("Unknown state!");
     currentState = IDLE;
+    Serial.println("STATE IDLE");
     reset_variables();
     break;
   }
