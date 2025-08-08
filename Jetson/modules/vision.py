@@ -171,13 +171,16 @@ def detect_target(target_class, config: VisionConfig, state: VisionState):
         if class_name != target_class:
             continue
         
-        bbox = (x1, y1, x2, y2, conf, class_id)
-        refined_center = refine_center_by_ellipse(state.latest_frame, bbox, debug=True)
-
-
-        # Compute center in pixels
-        x_pixel = refined_center[0]
-        y_pixel = refined_center[1]
+            # Refine center by ellipse if not a specific class
+        if target_class != "Marsipan" and class_name != "Fransk" and class_name != "Notti":
+            bbox = (x1, y1, x2, y2, conf, class_id)
+            refined_center = refine_center_by_ellipse(state.latest_frame, bbox, debug=True)
+            x_pixel = refined_center[0]
+            y_pixel = refined_center[1]
+        else:
+            # Use original center if not refining
+            x_pixel = int((x1 + x2) / 2)
+            y_pixel = int((y1 + y2) / 2)
 
         # Distance from image center
         dx = x_pixel - config.IMG_CENTER_X
@@ -330,6 +333,9 @@ def refine_center_by_ellipse(image, bbox, debug=False):
     """
     x1, y1, x2, y2 = map(int, bbox[:4])
 
+    original_x = (x1 + x2) // 2
+    original_y = (y1 + y2) // 2
+
     # Shave off pixels to avoid having the wrapper ends distorting the ellipse
     width = x2 - x1
     height = y2 - y1
@@ -411,7 +417,17 @@ def refine_center_by_ellipse(image, bbox, debug=False):
                 cv2.waitKey(0)
                 cv2.destroyAllWindows()
 
-            return refined_x, refined_y
+            dist = np.sqrt((refined_x - original_x)**2 + (refined_y - original_y)**2)
+
+            # Set a maximum allowed offset (in pixels)
+            max_distance = 20  # tune this value
+
+            if dist <= max_distance:
+                return refined_x, refined_y
+            else:
+                if debug:
+                    print(f"[Warning] Refined center too far from original: {dist:.1f} px — using fallback center.")
+                return original_x, original_y
 
     # Fallback: center of bounding box
-    return (int((x1 + x2) / 2), int((y1 + y2) / 2))
+    return (original_x, original_y)
