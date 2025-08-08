@@ -249,6 +249,8 @@ class AutomaticScreen(tk.Frame):
         self.popup_width = 400
         self.popup_height = 200
 
+        self.active_twist = None
+
         # Text in top left corner
         tk.Label(self, text="Auto", font=("Helvetica", 16, "bold"), fg="#cc0000", bg=BG_color).place(x=20, y=10)
 
@@ -341,18 +343,22 @@ class AutomaticScreen(tk.Frame):
                 font=("Helvetica", 12), bg="#cc0000", fg="white", width=15,
                 activebackground="#990000", activeforeground="white",
                 borderwidth=0, highlightthickness=0, relief="flat").pack(pady=10)
-
-
+        
+        twist_publisher.register_handler("EMPTY", lambda: self.after(0, self.handle_twist_empty))
+        twist_publisher.register_handler("DELIVERED", lambda: self.after(0, self.handle_twist_delivered))
+        twist_publisher.register_handler("LOST", lambda: self.after(0, self.handle_twist_lost))
 
 
     def on_button_click(self, twist):
         if send_message:
             twist_publisher.send_msg(twist.name)
-            self.show_loading_overlay(twist.name)
+            self.active_twist = twist.name
+            self.show_loading_overlay()
 
 
-    def show_loading_overlay(self, twist_name):
-        self.loading_label_title.config(text=f"Henter {twist_name}")
+    def show_loading_overlay(self):
+        self.loading_label_title.config(text="Vennligst vent...")
+        self.loading_label_status.config(text=f"{self.active_twist} levert")
         self.dot_count = 0
         self.waiting_animation_running = True
 
@@ -378,6 +384,7 @@ class AutomaticScreen(tk.Frame):
         self.waiting_animation_running = False
         self.loading_overlay.place_forget()
         self.blocker.place_forget()
+        self.active_twist = None
 
     def animate_dots_overlay(self):
         if not self.waiting_animation_running:
@@ -386,6 +393,21 @@ class AutomaticScreen(tk.Frame):
         self.loading_label_status.config(text=f"Vennligst vent{dots}")
         self.dot_count += 1
         self.after(500, self.animate_dots_overlay)
+    
+    def handle_twist_empty(self):
+        if self.active_twist:
+            self.loading_label_status.config(text=f"Tomt for {self.active_twist}")
+            self.after(2000, self.abort_and_close_overlay)
+
+    def handle_twist_delivered(self):
+        if self.active_twist:
+            self.loading_label_status.config(text=f"{self.active_twist} levert")
+            self.after(2000, self.abort_and_close_overlay)
+    
+    def handle_twist_lost(self):
+        if self.active_twist:
+            self.loading_label_status.config(text=f"{self.active_twist} mistet. Prøv igjen.")
+            self.after(2000, self.abort_and_close_overlay)
 
 def reboot_app(app_to_close):
     print("🛑 REBOOT message received — exiting app.")
