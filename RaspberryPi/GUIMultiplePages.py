@@ -396,16 +396,19 @@ class AutomaticScreen(tk.Frame):
     
     def handle_twist_empty(self):
         if self.active_twist:
+            self.waiting_animation_running = False
             self.loading_label_status.config(text=f"Tomt for {self.active_twist}")
             self.after(2000, self.abort_and_close_overlay)
 
     def handle_twist_delivered(self):
         if self.active_twist:
+            self.waiting_animation_running = False
             self.loading_label_status.config(text=f"{self.active_twist} levert")
             self.after(2000, self.abort_and_close_overlay)
     
     def handle_twist_lost(self):
         if self.active_twist:
+            self.waiting_animation_running = False
             self.loading_label_status.config(text=f"{self.active_twist} mistet. Prøv igjen.")
             self.after(2000, self.abort_and_close_overlay)
 
