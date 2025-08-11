@@ -24,7 +24,6 @@ button_style = {
     "font": ("Helvetica", 16)
 }
 
-send_message = True
 
 BG_color = "gray"
 
@@ -248,6 +247,7 @@ class AutomaticScreen(tk.Frame):
         # Popup dimensions
         self.popup_width = 400
         self.popup_height = 200
+        self.send_message = True
 
         self.active_twist = None
 
@@ -350,7 +350,7 @@ class AutomaticScreen(tk.Frame):
 
 
     def on_button_click(self, twist):
-        if send_message:
+        if self.send_message:
             twist_publisher.send_msg(twist.name)
             self.active_twist = twist.name
             self.show_loading_overlay()
@@ -379,7 +379,7 @@ class AutomaticScreen(tk.Frame):
         #LEGGE TIL HER
 
     def abort_and_close_overlay(self):
-        if send_message:
+        if self.send_message:
             twist_publisher.send_msg("ABORT")
         self.waiting_animation_running = False
         self.loading_overlay.place_forget()
@@ -398,19 +398,25 @@ class AutomaticScreen(tk.Frame):
         if self.active_twist:
             self.waiting_animation_running = False
             self.loading_label_status.config(text=f"Tomt for {self.active_twist}")
+            self.send_message = False
             self.after(2000, self.abort_and_close_overlay)
+            self.send_message = True
 
     def handle_twist_delivered(self):
         if self.active_twist:
             self.waiting_animation_running = False
             self.loading_label_status.config(text=f"{self.active_twist} levert")
+            self.send_message = False
             self.after(2000, self.abort_and_close_overlay)
+            self.send_message = True
     
     def handle_twist_lost(self):
         if self.active_twist:
             self.waiting_animation_running = False
             self.loading_label_status.config(text=f"{self.active_twist} mistet. Prøv igjen.")
+            self.send_message = False
             self.after(2000, self.abort_and_close_overlay)
+            self.send_message = True
 
 def reboot_app(app_to_close):
     print("🛑 REBOOT message received — exiting app.")
@@ -423,11 +429,10 @@ def reboot_app(app_to_close):
 if __name__ == "__main__":
     #time.sleep(5)  # wait for ROS networking to be ready
 
-    if send_message:
-        rclpy.init()
-        twist_publisher = TwistPublisher()
-        threading.Thread(target=rclpy.spin, args=(twist_publisher,), daemon=True).start()
-        #twist_publisher.wait_for_subscriber(timeout_sec=10)
+    rclpy.init()
+    twist_publisher = TwistPublisher()
+    threading.Thread(target=rclpy.spin, args=(twist_publisher,), daemon=True).start()
+    #twist_publisher.wait_for_subscriber(timeout_sec=10)
 
 
     app = App()
