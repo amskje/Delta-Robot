@@ -39,14 +39,14 @@ def ros_spin_thread(ros_comm):
     while rclpy.ok():
         ros_comm.spin_once(timeout_sec=0.05)
 
-def abort_listener(ROS, abort_flag, serial):
+def abort_listener(ROS, abort_flag, serial, state):
     while True:
         msg = ROS.get_latest_message()
         if msg == "ABORT":
             log("⚠️ ABORT received in background thread")
             abort_flag.set()
-            serial.send_message("ABORT")
-            #serial.wait_for_ack("ABORTED")
+            if (state == DELIVERING):
+                serial.send_message("ABORT")
             ROS.clear_message()
         time.sleep(0.05)
 
@@ -57,6 +57,10 @@ def main():
     arduino_ready = False
     rpi_ready = False
 
+    # Initial state
+    state = RobotState.IDLE
+    order = None 
+
     # Initialize modules
 
     ROS = comms.ROSComm()
@@ -66,7 +70,7 @@ def main():
 
     serial = comms.SerialComm()
 
-    threading.Thread(target=abort_listener, args=(ROS, abort_flag, serial), daemon=True).start()
+    threading.Thread(target=abort_listener, args=(ROS, abort_flag, serial, state), daemon=True).start()
 
     controller = control.DeltaRobotController(serial)
     vision_state = vision.VisionState()
@@ -105,9 +109,7 @@ def main():
     controller.go_to_pos(move_pos = (-120, 80, -305), abort_flag=abort_flag)
 
 
-    # Initial state
-    state = RobotState.IDLE
-    order = None 
+    
 
     ROS.send_message("SETUP_FINISHED")
     log(" Setup complete. Sent confirmation to RPi.")  
@@ -120,6 +122,15 @@ def main():
 
             if state == RobotState.IDLE:
                 log("Robot is idle. Waiting for commands...")
+
+                if state == RobotState.IDLE:
+                    # Check if abort flag was set during previous cleanup
+                    if abort_flag.is_set():
+                        log("⚠️ Abort flag still set in IDLE. Clearing.")
+                        abort_flag.clear()
+                        ROS.clear_message()  # Clear any leftover message
+                        time.sleep(0.5)
+                        continue
 
                 
 
@@ -151,6 +162,46 @@ def main():
                     if key.lower() == 'n':
                         log("Keyboard input 'n' detected. Simulating 'notti' message.")
                         order = 'Notti'
+                        state = RobotState.DELIVERING
+                        continue
+                    if key.lower() == 'b':
+                        log("Keyboard input 'b' detected. Simulating 'banan' message.")
+                        order = 'Banan'
+                        state = RobotState.DELIVERING
+                        continue
+                    if key.lower() == 'l':
+                        log("Keyboard input 'l' detected. Simulating 'lakris' message.")
+                        order = 'Lakris'
+                        state = RobotState.DELIVERING
+                        continue
+                    if key.lower() == 'm':
+                        log("Keyboard input 'm' detected. Simulating 'marsipan' message.")
+                        order = 'Marsipan'
+                        state = RobotState.DELIVERING
+                        continue
+                    if key.lower() == 'f':
+                        log("Keyboard input 'f' detected. Simulating 'fransk' message.")
+                        order = 'Fransk'
+                        state = RobotState.DELIVERING
+                        continue
+                    if key.lower() == 't':
+                        log("Keyboard input 't' detected. Simulating 'toffe' message.")
+                        order = 'Toffee'
+                        state = RobotState.DELIVERING
+                        continue
+                    if key.lower() == 'e':
+                        log("Keyboard input 'e' detected. Simulating 'eclairs' message.")
+                        order = 'Eclairs'
+                        state = RobotState.DELIVERING
+                        continue
+                    if key.lower() == 'o':
+                        log("Keyboard input 'o' detected. Simulating 'cocos' message.")
+                        order = 'Cocos'
+                        state = RobotState.DELIVERING
+                        continue
+                    if key.lower() == 'k':
+                        log("Keyboard input 'k' detected. Simulating 'karamell' message.")
+                        order = 'Karamell'
                         state = RobotState.DELIVERING
                         continue
 
