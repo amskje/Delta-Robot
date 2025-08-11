@@ -35,7 +35,7 @@ robot_coords = np.array([
 
 
 # Where the robot *actually went*, measured on your printed grid
-real_coords = np.array([
+real_coords_296 = np.array([
     [-92, -90],
     [-50, -90],
     [ -7, -91],
@@ -63,13 +63,42 @@ real_coords = np.array([
     [ 92,  88]
 ], dtype=np.float32)
 
+real_coords_345 = np.array([
+    [-84, -89],
+    [-48, -90],
+    [ -7, -91],
+    [ 33, -91],
+    [ 68, -88],
+    [-90, -42],
+    [-48, -44],
+    [ -5, -45],
+    [ 39, -45],
+    [ 82, -42],
+    [-91,   3],
+    [-48,   1],
+    [ -3,   0],
+    [ 42,   0],
+    [ 86,   2],
+    [-93,  45],
+    [-47,  44],
+    [ -2,  44],
+    [ 44,  45],
+    [ 90,  45],
+    [-100, 81],
+    [-49,  85],
+    [ -1,  86],
+    [ 46,  85],
+    [ 98,  80]
+], dtype=np.float32)
+
+
 
 # ---- Step 2: Calculate the homography from robot → real ----
 
-H, status = cv2.findHomography(robot_coords, real_coords)
+H, status = cv2.findHomography(robot_coords, real_coords_345)
 
 # Optional: save homography to file
-with open("homography_ROBOT_WORLD.json", "w") as f:
+with open("homography_ROBOT_WORLD_345.json", "w") as f:
     json.dump(H.tolist(), f)
 
 print("Homography matrix:\n", H)
