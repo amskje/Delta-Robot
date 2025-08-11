@@ -1,30 +1,34 @@
+
 import tkinter as tk
 from PIL import Image, ImageTk
 from enum import Enum
 from tkinter import messagebox
 
- 
-
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 import threading
+import sys
 
+import time
 
-
-#gjøre bakgrunn til kanpp liks som bakrunn, legge dette til i tk.Button: bg='black', fg='red', borderwidth=0, highlightthickness=0, relief='flat'
-
-
-
-
-
-# --- Global Variables ---
+# --- Global Style ---
+button_style = {
+    "bg": "#cc0000",                 # Red
+    "fg": "white",
+    "activebackground": "#990000",  # Darker red on press
+    "activeforeground": "white",
+    "borderwidth": 0,
+    "highlightthickness": 0,
+    "relief": "flat",
+    "font": ("Helvetica", 16)
+}
 
 send_message = True
 
- 
-# --- Twist Enum ---
+BG_color = "gray"
 
+# --- Twist Enum ---
 class Twist(Enum):
     Cocos = 1
     Daim = 2
@@ -34,208 +38,403 @@ class Twist(Enum):
     Golden = 6
     Japp = 7
     Notti = 8
-    
-    '''
     Eclairs = 9
     Toffee = 10
     Lakris = 11
-    Bannan = 12
-    '''
+    Banan = 12
+    Marsipan = 13
+
 # --- ROS Node ---
-
 class TwistPublisher(Node):
-
     def __init__(self):
         super().__init__('twist_publisher')
         self.publisher_ = self.create_publisher(String, 'PI_command', 10)
+        self.subscription = self.create_subscription(
+            String,
+            'PI_feedback',
+            self.feedback_callback,
+            10
+        )
+        self.subscription  # prevent unused variable warning
+        self.message_handlers = {}  # Set externally from GUI
 
- 
-
-    def send_twist(self, twist_name: str):
+    def send_msg(self, message: str):
         msg = String()
-        msg.data = twist_name
+        msg.data = message
         self.publisher_.publish(msg)
-        self.get_logger().info(f"Sent twist: {msg.data}")
+        self.get_logger().info(f"Sent message: {msg.data}")
+    
 
- 
 
-# --- App Class ---
+    def feedback_callback(self, msg: String):
+        message = msg.data.strip()
+        self.get_logger().info(f"Received message: {message}")
+        handler = self.message_handlers.get(message)
+        if handler:
+            handler()
+        else:
+            self.get_logger().warn(f"No handler registered for message: {message}")
 
+    def register_handler(self, message: str, handler_func):
+        """ Register a handler for a specific message value. """
+        self.message_handlers[message] = handler_func
+
+    def wait_for_subscriber(self, timeout_sec=10):
+        start = time.time()
+        while time.time() - start < timeout_sec:
+            if self.publisher_.get_subscription_count() > 0:
+                self.get_logger().info("Subscriber discovered!")
+                return True
+            self.get_logger().info("Waiting for subscriber...")
+            time.sleep(0.5)
+        self.get_logger().warn("No subscriber discovered within timeout.")
+        return False
+
+# --- App ---
 class App(tk.Tk):
-
     def __init__(self):
-        super().__init__()
+        super().__init__()  # must come first
+
         self.title("Delta Robot GUI")
-        self.attributes('-fullscreen', True)
-        self.configure(bg='black')
+        self.configure(bg=BG_color)
+
+        # Now we can safely get screen size
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        print(f"Detected screen size: {screen_width}x{screen_height}")
+
+        # Use geometry instead of fullscreen
+        self.geometry(f"{screen_width}x{screen_height}+0+0")
+        self.overrideredirect(True)  # optional: remove title bar
+        print(f"Detected screen size: {screen_width}x{screen_height}")
+
         self.bind("<Escape>", lambda event: self.quit())
 
-        container = tk.Frame(self, bg='black')
+        container = tk.Frame(self, bg=BG_color)
         container.pack(fill="both", expand=True)
 
         self.frames = {}
 
-        for F in (StartScreen, ManualScreen, AutomaticScreen, TestScreen):
+        for F in (LoadingScreen, StartScreen, ManualScreen, AutomaticScreen):
             frame = F(container, self)
             self.frames[F] = frame
             frame.place(relwidth=1, relheight=1)
 
-        self.show_frame(StartScreen)
+        self.show_frame(LoadingScreen)
 
     def show_frame(self, screen_class):
         frame = self.frames[screen_class]
         frame.tkraise()
 
- 
-
-# --- Start Screen ---
-
-class StartScreen(tk.Frame):
-
+class LoadingScreen(tk.Frame):
     def __init__(self, parent, controller):
-        super().__init__(parent, bg="black")
+        super().__init__(parent, bg=BG_color)
         self.controller = controller
+        self.dot_count = 0
+        self.max_dots = 3
 
-        logo_img = Image.open("twist_bilder/image.png").resize((300, 150))
+        # Load and display the logo
+        logo_img = Image.open("pictures/DRLogo.png")
+        logo_img.thumbnail((400, 200), Image.Resampling.LANCZOS)
         self.logo_photo = ImageTk.PhotoImage(logo_img)
 
-        tk.Label(self, image=self.logo_photo, bg="black").pack(pady=30)
+        tk.Label(self, image=self.logo_photo, bg=BG_color).pack(pady=(100, 40))
 
-        tk.Label(self, text="Velg modus:", font=("Arial", 20), fg="white", bg="black").pack(pady=10)
+        # Loading text label
+        self.loading_label = tk.Label(self, text="Loading", font=("Helvetica", 20), fg="white", bg=BG_color)
+        self.loading_label.pack()
 
-        button_frame = tk.Frame(self, bg="black")
-        button_frame.pack()
+        twist_publisher.send_msg("PI_READY")
+        
+        self.animate_loading()
 
-        tk.Button(button_frame, text="Manuell Modus", font=("Arial", 16), width=20, height=2, bg='black', fg='red', borderwidth=0, highlightthickness=0, relief='flat',
-                  command=lambda: controller.show_frame(ManualScreen)).grid(row=0, column=0, padx=10, pady=10)
+    def animate_loading(self):
+        # Cycle through dot count
+        dots = '.' * (self.dot_count % (self.max_dots + 1))
+        self.loading_label.config(text=f"Loading{dots}")
+        self.dot_count += 1
+        self.after(500, self.animate_loading)  # update every 500ms
 
-        tk.Button(button_frame, text="Automatisk Modus", font=("Arial", 16), width=20, height=2,
-                  command=lambda: controller.show_frame(AutomaticScreen)).grid(row=0, column=1, padx=10, pady=10)
+# --- Start Screen ---
+class StartScreen(tk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent, bg=BG_color)
+        self.controller = controller
 
-        tk.Button(button_frame, text="Test Modus", font=("Arial", 16), width=20, height=2,
-                  command=lambda: controller.show_frame(TestScreen)).grid(row=0, column=2, padx=10, pady=10)
+        tk.Button(
+            self,
+            text="Exit to Desktop",
+            command=self.exit_to_desktop,
+            **button_style
+        ).place(x=20, y=10, anchor="nw")
 
- 
+
+        logo_img = Image.open("pictures/DRLogo.png")
+        logo_img.thumbnail((400, 200), Image.Resampling.LANCZOS)
+        self.logo_photo = ImageTk.PhotoImage(logo_img)
+        tk.Label(self, image=self.logo_photo, bg=BG_color).pack(pady=(60, 40))
+
+        tk.Label(self, text="Velg modus:", font=("Helvetica", 20), fg="white", bg=BG_color).pack(pady=10)
+
+        button_frame = tk.Frame(self, bg=BG_color)
+        button_frame.pack(pady=(0, 40))
+
+        tk.Button(button_frame, text="Manuell Modus",
+            command=lambda: controller.show_frame(ManualScreen),
+            **button_style).grid(row=0, column=0, padx=20, pady=10, sticky="ew")
+
+        tk.Button(button_frame, text="Automatisk Modus",
+            command=lambda: controller.show_frame(AutomaticScreen),
+            **button_style).grid(row=0, column=1, padx=20, pady=10, sticky="ew")
+        """"
+        tk.Button(button_frame, text="Test Modus",
+            command=lambda: controller.show_frame(TestScreen),
+            **button_style).grid(row=0, column=2, padx=20, pady=10, sticky="ew")
+        """
+
+    def exit_to_desktop(self):
+        print("Exiting GUI to desktop safely...")
+        self.controller.destroy()  # Destroys the main Tk window (if desired)
 
 # --- Manual Screen ---
-
 class ManualScreen(tk.Frame):
 
     def __init__(self, parent, controller):
-        super().__init__(parent, bg="black")
+        super().__init__(parent, bg=BG_color)
         self.controller = controller
 
-        center = tk.Frame(self, bg="black")
+        # Text in top left corner
+        tk.Label(self, text="Manuell", font=("Helvetica", 16, "bold"), fg="#cc0000", bg=BG_color).place(x=20, y=10)
+
+        center = tk.Frame(self, bg=BG_color)
         center.place(relx=0.5, rely=0.5, anchor="center")
 
-        tk.Label(center, text="Manuell kontroll", font=("Arial", 20), fg="white", bg="black").grid(row=0, column=1, pady=20)
+        tk.Button(center, text="↑", width=5,
+                  command=lambda: self.move("Up"),
+                  **button_style).grid(row=1, column=1, pady=5)
 
-        tk.Button(center, text="↑", font=("Arial", 24), width=5, bg="red", fg="white",
-                  command=lambda: self.move("Up")).grid(row=1, column=1, pady=5)
+        tk.Button(center, text="←", width=5,
+                  command=lambda: self.move("Left"),
+                  **button_style).grid(row=2, column=0, padx=5)
 
-        tk.Button(center, text="←", font=("Arial", 24), width=5, bg="red", fg="white",
-                  command=lambda: self.move("Left")).grid(row=2, column=0, padx=5)
+        tk.Button(center, text="↓", width=5,
+                  command=lambda: self.move("Down"),
+                  **button_style).grid(row=3, column=1, pady=5)
 
-        tk.Button(center, text="↓", font=("Arial", 24), width=5, bg="red", fg="white",
-                  command=lambda: self.move("Down")).grid(row=2, column=1, pady=5)
+        tk.Button(center, text="→", width=5,
+                  command=lambda: self.move("Right"),
+                  **button_style).grid(row=2, column=2, padx=5)
 
-        tk.Button(center, text="→", font=("Arial", 24), width=5, bg="red", fg="white",
-                  command=lambda: self.move("Right")).grid(row=2, column=2, padx=5)
+        # Create a "Tilbake" button placed at the bottom of the screen
+        tk.Button(
+            self,
+            text="Tilbake",
+            command=lambda: controller.show_frame(StartScreen),
+            **button_style
+        ).place(relx=0.5, rely=0.9, anchor="center")
 
-        tk.Button(center, text="Tilbake", font=("Arial", 14),
-                  command=lambda: controller.show_frame(StartScreen)).grid(row=3, column=1, pady=20)
 
     def move(self, direction):
         print("Robot moves", direction)
 
- 
-
 # --- Automatic Screen ---
-
 class AutomaticScreen(tk.Frame):
 
     def __init__(self, parent, controller):
-        super().__init__(parent, bg="black")
+        super().__init__(parent, bg=BG_color)
         self.controller = controller
+        self.waiting_animation_running = False
+        self.dot_count = 0
+        # Popup dimensions
+        self.popup_width = 400
+        self.popup_height = 200
 
-        tk.Label(self, text="Velg din Twist:", font=("Arial", 18), fg="white", bg="black").pack(pady=20)
+        self.active_twist = None
 
-        button_frame = tk.Frame(self, bg="black")
-        button_frame.pack()
+        # Text in top left corner
+        tk.Label(self, text="Auto", font=("Helvetica", 16, "bold"), fg="#cc0000", bg=BG_color).place(x=20, y=10)
+
+        tk.Label(self, text="Velg din Twist:", font=("Arial", 18), fg="white", bg=BG_color).pack(pady=(20, 10))
+
+        # Container frame for the twist grid
+        grid_container = tk.Frame(self, bg=BG_color, height=500)
+        grid_container.pack(padx=40, pady=(0, 20))
+        grid_container.pack_propagate(False)
+
+
+
+        # Create 4 columns and 3 rows that expand equally
+        for col in range(5):
+            grid_container.columnconfigure(col, weight=1)
+        for row in range(3):
+            grid_container.rowconfigure(row, weight=1)
 
         self.images = []
 
-        image_files = [f"twist_bilder/{tw.name.lower()}.png" for tw in Twist]
-
         for i, twist in enumerate(Twist):
-            img = Image.open(image_files[i]).resize((100, 100))
-            photo = ImageTk.PhotoImage(img)
-            self.images.append(photo)
+            try:
+                image_path = f"pictures/twist/{twist.name.lower()}.png"
+                img = Image.open(image_path)
 
-            btn = tk.Button(button_frame, image=photo, command=lambda t=twist: self.on_button_click(t))
-            btn.grid(row=i // 4, column=i % 4, padx=10, pady=10)
+                # Larger image size
+                if twist == Twist.Notti:
+                    img.thumbnail((90, 90), Image.Resampling.LANCZOS)
+                else:
+                    img.thumbnail((130, 130), Image.Resampling.LANCZOS)
 
-        tk.Button(self, text="Tilbake", font=("Arial", 14),
-                  command=lambda: controller.show_frame(StartScreen)).pack(pady=20)
+                photo = ImageTk.PhotoImage(img)
+                self.images.append(photo)
 
- 
+                btn = tk.Button(
+                    grid_container,
+                    image=photo,
+                    command=lambda t=twist: self.on_button_click(t),
+                    bg=BG_color,
+                    activebackground=BG_color,
+                    borderwidth=0,
+                    highlightthickness=0,
+                    relief='flat'
+                )
+                btn.image = photo
+                btn.grid(
+                    row=i // 4,
+                    column=i % 4,
+                    padx=10,
+                    pady=4,
+                    sticky="nsew"
+                )
+
+            except Exception as e:
+                print(f"Failed to load {twist.name}: {e}")
+
+        # "Tilbake" button anchored at the bottom
+        tk.Button(
+            self,
+            text="Tilbake",
+            command=lambda: controller.show_frame(StartScreen),
+            **button_style
+        ).pack(pady=20)
+
+        # Register GUI callback with ROS node
+        #twist_publisher.register_handler("PICKED_UP", self.twist_picked_up)
+
+        # Transparent overlay for blocking buttons in the background
+        self.blocker = tk.Frame(self, bg="", width=1, height=1)
+        self.blocker.place_forget()
+        self.blocker.bind("<Button-1>", lambda e: "break")  # absorb clicksself.blocker = tk.Frame(self, bg="", width=1, height=1)
+        self.blocker.place_forget()
+        self.blocker.bind("<Button-1>", lambda e: "break")  # absorb clicks
+
+        # Create the loading overlay frame
+
+        self.loading_overlay = tk.Frame(self, bg="#4c4c4c")
+        self.loading_overlay.place_forget()  # Start hidden
+
+        # Content inside the frame
+        self.loading_label_title = tk.Label(self.loading_overlay, text="Henter ...",
+                                            font=("Helvetica", 18), fg="white", bg="#4c4c4c")
+        self.loading_label_title.pack(pady=(20, 10))
+
+        self.loading_label_status = tk.Label(self.loading_overlay, text="Vennligst vent...",
+                                            font=("Helvetica", 14), fg="white", bg="#4c4c4c")
+        self.loading_label_status.pack()
+
+        tk.Button(self.loading_overlay, text="Avbryt", command=self.abort_and_close_overlay,
+                font=("Helvetica", 12), bg="#cc0000", fg="white", width=15,
+                activebackground="#990000", activeforeground="white",
+                borderwidth=0, highlightthickness=0, relief="flat").pack(pady=10)
+        
+        twist_publisher.register_handler("EMPTY", lambda: self.after(0, self.handle_twist_empty))
+        twist_publisher.register_handler("DELIVERED", lambda: self.after(0, self.handle_twist_delivered))
+        twist_publisher.register_handler("LOST", lambda: self.after(0, self.handle_twist_lost))
+
 
     def on_button_click(self, twist):
-
         if send_message:
-            twist_publisher.send_twist(twist.name)
+            twist_publisher.send_msg(twist.name)
+            self.active_twist = twist.name
+            self.show_loading_overlay()
 
-        messagebox.showinfo("Valg", f"Du valgte {twist.name}")
 
- 
-# --- Test Screen ---
+    def show_loading_overlay(self):
+        self.loading_label_title.config(text="Vennligst vent...")
+        self.loading_label_status.config(text=f"{self.active_twist} levert")
+        self.dot_count = 0
+        self.waiting_animation_running = True
 
-class TestScreen(tk.Frame):
+        # Make the blocker cover the whole window
+        self.blocker.place(relx=0, rely=0, relwidth=1, relheight=1)
+        self.blocker.lift()
 
-    def __init__(self, parent, controller):
-        super().__init__(parent, bg="black")
-        self.controller = controller
+        # Lift the overlay above the blocker
+        self.loading_overlay.lift()
+        self.loading_overlay.place(relx=0.5, rely=0.5, anchor="center",
+                                width=self.popup_width, height=self.popup_height)
+        self.animate_dots_overlay()
 
-        tk.Label(self, text="Velg en twist:", font=("Arial", 18), fg="white", bg="black").place(x=300, y=30)
 
-        self.images = []
+    def twist_picked_up(self):
+        # Called from ROS thread; use `after` to safely update GUI
+        print("Twist picked up, closing overlay.")
+        #LEGGE TIL HER
 
-        image_files = [f"twist_bilder/{tw.name.lower()}.png" for tw in Twist]
-
-        positions = [(50, 100), (200, 100), (350, 100), (500, 100),
-                     (50, 250), (200, 250), (350, 250), (500, 250)]
-
-        for i, twist in enumerate(Twist):
-            img = Image.open(image_files[i]).resize((100, 100))
-            photo = ImageTk.PhotoImage(img)
-            self.images.append(photo)
-
-            btn = tk.Button(self, image=photo, command=lambda t=twist: self.on_button_click(t), bg='black', activebackground='black', borderwidth=0, highlightthickness=0, relief='flat',)
-            btn.place(x=positions[i][0], y=positions[i][1])
-
-        logo_img = Image.open("twist_bilder/placeholder.jpg").resize((160, 430))
-        self.logo_photo = ImageTk.PhotoImage(logo_img)
-
-        tk.Label(self, image=self.logo_photo, bg="black").place(x=640, y=45)
-
-        tk.Button(self, text="Tilbake", font=("Arial", 14),
-                  command=lambda: controller.show_frame(StartScreen)).place(x=350, y=365)
-
-    def on_button_click(self, twist):
-
+    def abort_and_close_overlay(self):
         if send_message:
-            twist_publisher.send_twist(twist.name)
+            twist_publisher.send_msg("ABORT")
+        self.waiting_animation_running = False
+        self.loading_overlay.place_forget()
+        self.blocker.place_forget()
+        self.active_twist = None
 
- 
+    def animate_dots_overlay(self):
+        if not self.waiting_animation_running:
+            return
+        dots = "." * (self.dot_count % 4)
+        self.loading_label_status.config(text=f"Vennligst vent{dots}")
+        self.dot_count += 1
+        self.after(500, self.animate_dots_overlay)
+    
+    def handle_twist_empty(self):
+        if self.active_twist:
+            self.waiting_animation_running = False
+            self.loading_label_status.config(text=f"Tomt for {self.active_twist}")
+            self.after(2000, self.abort_and_close_overlay)
+
+    def handle_twist_delivered(self):
+        if self.active_twist:
+            self.waiting_animation_running = False
+            self.loading_label_status.config(text=f"{self.active_twist} levert")
+            self.after(2000, self.abort_and_close_overlay)
+    
+    def handle_twist_lost(self):
+        if self.active_twist:
+            self.waiting_animation_running = False
+            self.loading_label_status.config(text=f"{self.active_twist} mistet. Prøv igjen.")
+            self.after(2000, self.abort_and_close_overlay)
+
+def reboot_app(app_to_close):
+    print("🛑 REBOOT message received — exiting app.")
+    app_to_close.quit()
+    app_to_close.destroy()
+    sys.exit(1)
+
 
 # --- Main ---
-
 if __name__ == "__main__":
+    #time.sleep(5)  # wait for ROS networking to be ready
 
     if send_message:
         rclpy.init()
         twist_publisher = TwistPublisher()
         threading.Thread(target=rclpy.spin, args=(twist_publisher,), daemon=True).start()
+        #twist_publisher.wait_for_subscriber(timeout_sec=10)
+
 
     app = App()
+
+    # Register handlers for ROS messages
+    twist_publisher.register_handler("SETUP_FINISHED", lambda: app.after(0, lambda: app.show_frame(StartScreen)))
+
+    twist_publisher.register_handler("REBOOT", lambda: app.after(0, lambda: reboot_app(app)))
+
     app.mainloop()
