@@ -385,6 +385,12 @@ class AutomaticScreen(tk.Frame):
         self.loading_overlay.place_forget()
         self.blocker.place_forget()
         self.active_twist = None
+    
+    def close_overlay(self):
+        self.waiting_animation_running = False
+        self.loading_overlay.place_forget()
+        self.blocker.place_forget()
+        self.active_twist = None
 
     def animate_dots_overlay(self):
         if not self.waiting_animation_running:
@@ -398,25 +404,19 @@ class AutomaticScreen(tk.Frame):
         if self.active_twist:
             self.waiting_animation_running = False
             self.loading_label_status.config(text=f"Tomt for {self.active_twist}")
-            self.send_message = False
-            self.after(2000, self.abort_and_close_overlay)
-            self.send_message = True
+            self.after(2000, self.close_overlay)
 
     def handle_twist_delivered(self):
         if self.active_twist:
             self.waiting_animation_running = False
             self.loading_label_status.config(text=f"{self.active_twist} levert")
-            self.send_message = False
-            self.after(2000, self.abort_and_close_overlay)
-            self.send_message = True
+            self.after(2000, self.close_overlay)
     
     def handle_twist_lost(self):
         if self.active_twist:
             self.waiting_animation_running = False
             self.loading_label_status.config(text=f"{self.active_twist} mistet. Prøv igjen.")
-            self.send_message = False
-            self.after(2000, self.abort_and_close_overlay)
-            self.send_message = True
+            self.after(2000, self.close_overlay)
 
 def reboot_app(app_to_close):
     print("🛑 REBOOT message received — exiting app.")
