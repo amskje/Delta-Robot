@@ -20,6 +20,10 @@ class ControlConfig:
     DOWN_NOTTI_MM: int = 50
     INITIAL_POSITION: kinematics.Position = kinematics.Position(HOME_X, HOME_Y, HOME_Z)  # Initial position after goHome()
 
+     # New fallback positions
+    FALLBACK_STAGE1: Tuple[float, float, float] = (0.0, 0.0, -305.0)
+    FALLBACK_STAGE2: Tuple[float, float, float] = (-120.0, 80.0, -305.0)
+
 def config() -> ControlConfig:
     return ControlConfig()
 
@@ -43,10 +47,11 @@ class DeltaRobotController:
 
     def check_abort(self, abort_flag, msg=""):
         if abort_flag and abort_flag.is_set():
-            self.go_to_pos((-120, 80, -305), abort_flag=None) 
             print(f"[Control] ABORT detected {msg}. Retreating...")
             return True
         return False
+
+
 
 
     def send_angles_sequence(self, angles_list, angles_down_list, down_included, abort_flag=None):
@@ -58,7 +63,8 @@ class DeltaRobotController:
 
         for angles in angles_list:
             if self.check_abort(abort_flag, "before pickup"):
-                return False, "ABORTED"
+                self.retreat_home(abort_flag=abort_flag)
+                return "ABORTED"
             a1, a2, a3 = angles
             msg = f"ANGLES {int(a1)}, {int(a2)}, {int(a3)}"
             self.serial.send_message(msg)
@@ -72,7 +78,7 @@ class DeltaRobotController:
             
             for angles_down in angles_down_list:
                 if self.check_abort(abort_flag, "before pickup"):
-                                return "ABORTED"
+                    return "ABORTED"
                 a1, a2, a3 = angles_down
                 msg = f"ANGLES {int(a1)}, {int(a2)}, {int(a3)}"
                 self.serial.send_message(msg)
@@ -123,30 +129,24 @@ class DeltaRobotController:
 
 
         
-        pickup_result = self.send_angles_sequence(pickup_angles, down_angles, down_included=True)
+        pickup_result = self.send_angles_sequence(pickup_angles, down_angles, down_included=True, abort_flag=abort_flag)
 
 
         if pickup_result != "SUCCESS":
             if pickup_result in ["NOT_PICKED_UP", "DROPPED", "ABORTED"]:
                 print(f"[Control] Twist delivery not completed, message recived {pickup_result}. Moving to fallback position.")
-                self.go_to_pos((0, 0, -305))
-                self.go_to_pos((-120, 80, -305))
-                self.current_pos = [-120, 80, -305] 
-
+                self.retreat_home(abort_flag=abort_flag)
                 return False, pickup_result
-
             else:
                 print(f"[Control] Error during pickup: {pickup_result}")
                 return False, pickup_result
         else: 
             # Update robot position
-            self.current_pos = [x_corrected, y_corrected, target_pos[2] ] 
+            self.current_pos = [x_corrected, y_corrected, target_pos[2]] 
 
         
 
-       
-
-
+    
         # === Phase 2: Plan path to drop-off
         
         print(f"[Control] Planning move to drop-off at {dropoff_pos}...")
@@ -172,10 +172,7 @@ class DeltaRobotController:
         if pickup_result != "SUCCESS":
             if pickup_result in ["NOT_PICKED_UP", "DROPPED", "ABORTED"]:
                 print(f"[Control] Twist delivery not completed, message recived {pickup_result}. Moving to fallback position.")
-                self.go_to_pos((0, 0, -305))
-                self.go_to_pos((-120, 80, -305))
-                self.current_pos = [-120, 80, -305] 
-
+                self.retreat_home(abort_flag=abort_flag)
                 return False, pickup_result
 
             else:
@@ -188,13 +185,6 @@ class DeltaRobotController:
             return True, "SUCCESS"
 
         
-
-
-       
-        
-        
-
-
  
     def go_to_pos(self, move_pos: Tuple[float, float, float],  abort_flag=None):
         """
@@ -220,4 +210,19 @@ class DeltaRobotController:
         
         print("[Control] Move complete.")
         return True
+    
         
+    def retreat_home(self, abort_flag=None):
+        fallback1 = config().FALLBACK_STAGE1
+        fallback2 = config().FALLBACK_STAGE2
+
+        success1 = self.go_to_pos(fallback1, abort_flag=abort_flag)
+        success2 = self.go_to_pos(fallback2, abort_flag=abort_flag)
+
+        if success2:
+            self.current_pos = list(fallback2)
+        elif success1:
+            self.current_pos = list(fallback1)
+        else:
+            print("[Control] Retreat failed — abort might be blocking motion.")
+            
