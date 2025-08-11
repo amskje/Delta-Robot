@@ -63,7 +63,11 @@ class DeltaRobotController:
 
         for angles in angles_list:
             if self.check_abort(abort_flag, "before pickup"):
-                self.retreat_home(abort_flag=abort_flag)
+                aborted = self.serial.wait_for_ack("ABORTED")
+                if aborted is True:
+                    print("Arduino did abort, ready to move")
+                else:
+                    print("arduino did not abort and is not ready to move")
                 return "ABORTED"
             a1, a2, a3 = angles
             msg = f"ANGLES {int(a1)}, {int(a2)}, {int(a3)}"
@@ -78,6 +82,12 @@ class DeltaRobotController:
             
             for angles_down in angles_down_list:
                 if self.check_abort(abort_flag, "before pickup"):
+                    aborted = self.serial.wait_for_ack("ABORTED")
+                    if aborted is True:
+                        print("Arduino did abort, ready to move")
+                    else:
+                        print("arduino did not abort and is not ready to move")
+                    #self.retreat_home(abort_flag=abort_flag)
                     return "ABORTED"
                 a1, a2, a3 = angles_down
                 msg = f"ANGLES {int(a1)}, {int(a2)}, {int(a3)}"
@@ -135,7 +145,7 @@ class DeltaRobotController:
         if pickup_result != "SUCCESS":
             if pickup_result in ["NOT_PICKED_UP", "DROPPED", "ABORTED"]:
                 print(f"[Control] Twist delivery not completed, message recived {pickup_result}. Moving to fallback position.")
-                self.retreat_home(abort_flag=abort_flag)
+                #self.retreat_home(abort_flag=abort_flag)
                 return False, pickup_result
             else:
                 print(f"[Control] Error during pickup: {pickup_result}")
@@ -169,10 +179,11 @@ class DeltaRobotController:
         self.serial.send_message("DROPP")
 
         pickup_result = self.send_angles_sequence(dropoff_angles, [], down_included=False, abort_flag=abort_flag)
+
         if pickup_result != "SUCCESS":
             if pickup_result in ["NOT_PICKED_UP", "DROPPED", "ABORTED"]:
                 print(f"[Control] Twist delivery not completed, message recived {pickup_result}. Moving to fallback position.")
-                self.retreat_home(abort_flag=abort_flag)
+                #self.retreat_home(abort_flag=abort_flag)
                 return False, pickup_result
 
             else:
@@ -213,11 +224,12 @@ class DeltaRobotController:
     
         
     def retreat_home(self, abort_flag=None):
+
         fallback1 = config().FALLBACK_STAGE1
         fallback2 = config().FALLBACK_STAGE2
 
-        success1 = self.go_to_pos(fallback1, abort_flag=abort_flag)
-        success2 = self.go_to_pos(fallback2, abort_flag=abort_flag)
+        success1 = self.go_to_pos(fallback1, abort_flag=None)
+        success2 = self.go_to_pos(fallback2, abort_flag=None)
 
         if success2:
             self.current_pos = list(fallback2)
