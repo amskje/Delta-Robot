@@ -124,14 +124,13 @@ def main():
             if state == RobotState.IDLE:
                 log("Robot is idle. Waiting for commands...")
 
-                if state == RobotState.IDLE:
-                    # Check if abort flag was set during previous cleanup
-                    if abort_flag.is_set():
-                        log("⚠️ Abort flag still set in IDLE. Clearing.")
-                        abort_flag.clear()
-                        ROS.clear_message()  # Clear any leftover message
-                        time.sleep(0.5)
-                        continue
+                # Check if abort flag was set during previous cleanup
+                if abort_flag.is_set():
+                    log("⚠️ Abort flag still set in IDLE. Clearing.")
+                    abort_flag.clear()
+                    ROS.clear_message()  # Clear any leftover message
+                    time.sleep(0.5)
+                    continue
 
                 
 
@@ -217,10 +216,12 @@ def main():
                     state = RobotState.DELIVERING
                 elif msg == "MANUAL":
                     log("Entering manual mode.")
+                    serial.send_message("MANUAL")
                     state = RobotState.MANUAL
                     ROS.clear_message()
                 else:
                     time.sleep(0.5)  # Prevent rapid idle polling
+                    
 
             elif state == RobotState.DELIVERING:
                 log(f"Received order for: {order}")
@@ -322,20 +323,29 @@ def main():
                     elif msg == "MOVE_DOWN":
                         if controller.current_pos[2] > -325:
                             controller.go_to_pos(move_pos=(controller.current_pos[0], controller.current_pos[1], controller.current_pos[2] - 5))
-
-                    elif msg.startswith("CLICK "):
-                        # Example format: "CLICK 0.25,-0.50"
+                                        
+                    elif msg.startswith("WAYPOINT "):
                         coord_str = msg.split()[1]
                         x_str, y_str = coord_str.split(",")
                         x = float(x_str)
                         y = float(y_str)
+                        angles = []
 
-                        controller.go_to_pos(move_pos=(x * 140, y * 140, controller.current_pos[2]), abort_flag=abort_flag)
-                        log(f"Manual: CLICK {coord_str}")
+                        kinematics.plan_linear_move(controller.current_pos[0], controller.current_pos[1], controller.current_pos[2],
+                                                     -y * 140, x*140, controller.current_pos[2], angles, waypoints=2)
+                        a1, a2, a3 = angles[1] # Sending only the goal waypoint
+                        msg = f"ANGLES {int(a1)}, {int(a2)}, {int(a3)}"
+                        serial.send_message(msg)
+                        controller.current_pos = (-y * 140, x*140, controller.current_pos[2])
+                        print(f"Sent Angles {int(a1)}, {int(a2)}, {int(a3)}")
 
                     elif msg == "EXIT_MANUAL":
                         log("Exiting manual mode. Returning to IDLE.")
                         state = RobotState.IDLE
+                        serial.send_message("AUTOMATIC")
+                        serial.wait_for_ack("EXIT_MANUAL")
+                        controller.go_to_pos(move_pos = (0, 0, -305), abort_flag=abort_flag)
+                        controller.go_to_pos(move_pos = (-120, 80, -305), abort_flag=abort_flag)
 
                     else:
                         log(f"Unknown manual message: {msg}")
