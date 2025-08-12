@@ -195,9 +195,7 @@ class StartScreen(tk.Frame):
         print("Exiting GUI to desktop safely...")
         self.controller.destroy()  # Destroys the main Tk window (if desired)
 
-# --- Manual Screen ---
 class ManualScreen(tk.Frame):
-
     def __init__(self, parent, controller):
         super().__init__(parent, bg=BG_color)
         self.controller = controller
@@ -205,36 +203,62 @@ class ManualScreen(tk.Frame):
         # Text in top left corner
         tk.Label(self, text="Manuell", font=("Helvetica", 16, "bold"), fg="#cc0000", bg=BG_color).place(x=20, y=10)
 
-        center = tk.Frame(self, bg=BG_color)
-        center.place(relx=0.5, rely=0.5, anchor="center")
+        # Layout: Left (Canvas) and Right (Buttons)
+        main_frame = tk.Frame(self, bg=BG_color)
+        main_frame.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.95, relheight=0.85)
 
-        tk.Button(center, text="↑", width=5,
-                  command=lambda: self.move("Up"),
-                  **button_style).grid(row=1, column=1, pady=5)
+        # --- Canvas (circle) ---
+        self.canvas_size = min(self.winfo_screenheight(), self.winfo_screenwidth()) * 0.7
+        self.canvas = tk.Canvas(main_frame, bg="white", highlightthickness=0, width=self.canvas_size, height=self.canvas_size)
+        self.canvas.pack(side="left", expand=True, fill="both")
 
-        tk.Button(center, text="←", width=5,
-                  command=lambda: self.move("Left"),
-                  **button_style).grid(row=2, column=0, padx=5)
+        # Draw a big circle (oval)
+        self.canvas.create_oval(10, 10, self.canvas_size-10, self.canvas_size-10, fill="white", outline="black")
 
-        tk.Button(center, text="↓", width=5,
-                  command=lambda: self.move("Down"),
-                  **button_style).grid(row=3, column=1, pady=5)
+        # Bind click event
+        self.canvas.bind("<Button-1>", self.on_canvas_click)
 
-        tk.Button(center, text="→", width=5,
-                  command=lambda: self.move("Right"),
-                  **button_style).grid(row=2, column=2, padx=5)
+        # --- Button column ---
+        button_frame = tk.Frame(main_frame, bg=BG_color)
+        button_frame.pack(side="right", padx=20, pady=20, fill="y")
 
-        # Create a "Tilbake" button placed at the bottom of the screen
-        tk.Button(
-            self,
-            text="Tilbake",
-            command=lambda: controller.show_frame(StartScreen),
-            **button_style
-        ).place(relx=0.5, rely=0.9, anchor="center")
+        tk.Button(button_frame, text="↑", width=6,
+                  command=lambda: self.move("Up"), **button_style).pack(pady=10)
+
+        tk.Button(button_frame, text="↓", width=6,
+                  command=lambda: self.move("Down"), **button_style).pack(pady=10)
+
+        tk.Button(button_frame, text="Pump On", width=10,
+                  command=lambda: twist_publisher.send_msg("PUMP_ON"), **button_style).pack(pady=10)
+
+        tk.Button(button_frame, text="Pump Off", width=10,
+                  command=lambda: twist_publisher.send_msg("PUMP_OFF"), **button_style).pack(pady=10)
+
+        tk.Button(button_frame, text="Tilbake",
+                  command=lambda: controller.show_frame(StartScreen), **button_style).pack(pady=30)
+
+    def on_canvas_click(self, event):
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
+
+        cx = canvas_width / 2
+        cy = canvas_height / 2
+        radius = canvas_width / 2
+
+        rel_x = event.x - cx
+        rel_y = event.y - cy
+
+        # Optionally ignore clicks outside the circle
+        if rel_x**2 + rel_y**2 > radius**2:
+            return
+
+        print(f"Relative click at: ({rel_x:.2f}, {rel_y:.2f})")
+        twist_publisher.send_msg(f"CLICK {rel_x:.2f},{rel_y:.2f}")
 
 
     def move(self, direction):
-        print("Robot moves", direction)
+        twist_publisher.send_msg(f"MOVE_{direction.upper()}")
+
 
 # --- Automatic Screen ---
 class AutomaticScreen(tk.Frame):
