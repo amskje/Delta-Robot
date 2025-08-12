@@ -240,7 +240,7 @@ class ManualScreen(tk.Frame):
             highlightthickness=0,
             command=self.on_z_slider_change
         )
-        self.z_slider.set(0.5)
+        self.z_slider.set(1)
         self.z_slider.pack()
 
         # --- Buttons Frame (right) ---
@@ -265,7 +265,7 @@ class ManualScreen(tk.Frame):
         now = time.time()
 
         # Throttle updates to 50ms
-        if hasattr(self, 'last_z_update') and (now - self.last_z_update) < 0.05:
+        if hasattr(self, 'last_z_update') and (now - self.last_z_update) < 0.01:
             return
         self.last_z_update = now
 
@@ -300,7 +300,7 @@ class ManualScreen(tk.Frame):
         now = time.time()
         
         # Check if enough time has passed since the last message
-        if hasattr(self, 'last_drag_time') and (now - self.last_drag_time) < 0.03:
+        if hasattr(self, 'last_drag_time') and (now - self.last_drag_time) < 0.01:
             return
         self.last_drag_time = now
 
