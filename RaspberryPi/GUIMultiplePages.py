@@ -160,12 +160,14 @@ class StartScreen(tk.Frame):
         super().__init__(parent, bg=BG_color)
         self.controller = controller
 
+        """
         tk.Button(
             self,
             text="Exit to Desktop",
             command=self.exit_to_desktop,
             **button_style
         ).place(x=20, y=10, anchor="nw")
+        """
 
 
         logo_img = Image.open("pictures/DRLogo.png")
@@ -178,11 +180,11 @@ class StartScreen(tk.Frame):
         button_frame = tk.Frame(self, bg=BG_color)
         button_frame.pack(pady=(0, 40))
 
-        tk.Button(button_frame, text="Manuell Modus",
+        tk.Button(button_frame, text="Manuell Styring",
             command=lambda: controller.show_frame(ManualScreen),
             **button_style).grid(row=0, column=0, padx=20, pady=10, sticky="ew")
 
-        tk.Button(button_frame, text="Automatisk Modus",
+        tk.Button(button_frame, text="Automatisk Plukking",
             command=lambda: controller.show_frame(AutomaticScreen),
             **button_style).grid(row=0, column=1, padx=20, pady=10, sticky="ew")
         """"
