@@ -223,6 +223,8 @@ class ManualScreen(tk.Frame):
 
         # Bind click handler
         self.canvas.bind("<Button-1>", self.on_canvas_click)
+        self.canvas.bind("<B1-Motion>", self.on_canvas_drag)
+
 
         # Button column on the right
         button_frame = tk.Frame(main_frame, bg=BG_color)
@@ -265,6 +267,31 @@ class ManualScreen(tk.Frame):
         norm_y = rel_y / self.radius
 
         twist_publisher.send_msg(f"CLICK {norm_x:.3f},{-norm_y:.3f}")
+
+    def on_canvas_drag(self, event):
+        now = time.time()
+        
+        # Check if enough time has passed since the last message
+        if hasattr(self, 'last_drag_time') and (now - self.last_drag_time) < 0.1:
+            return
+        self.last_drag_time = now
+
+        # Center of the circle
+        cx = self.canvas_size / 2
+        cy = self.canvas_size / 2
+        rel_x = event.x - cx
+        rel_y = event.y - cy
+
+        # Restrict to inside the circle
+        if rel_x**2 + rel_y**2 > self.radius**2:
+            return
+
+        # Normalize to [-1.0, 1.0]
+        norm_x = rel_x / self.radius
+        norm_y = rel_y / self.radius
+
+        # Send to ROS
+        twist_publisher.send_msg(f"WAYPOINT {norm_x:.3f},{norm_y:.3f}")
 
 
 
