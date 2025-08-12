@@ -272,7 +272,7 @@ class ManualScreen(tk.Frame):
         now = time.time()
         
         # Check if enough time has passed since the last message
-        if hasattr(self, 'last_drag_time') and (now - self.last_drag_time) < 0.1:
+        if hasattr(self, 'last_drag_time') and (now - self.last_drag_time) < 0.03:
             return
         self.last_drag_time = now
 
