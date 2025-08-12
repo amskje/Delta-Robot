@@ -179,9 +179,9 @@ class StartScreen(tk.Frame):
 
         button_frame = tk.Frame(self, bg=BG_color)
         button_frame.pack(pady=(0, 40))
-
         tk.Button(button_frame, text="Manuell Styring",
-            command=lambda: controller.show_frame(ManualScreen),
+            command=lambda: [twist_publisher.send_msg("MANUAL"),
+                            controller.show_frame(ManualScreen)],
             **button_style).grid(row=0, column=0, padx=20, pady=10, sticky="ew")
 
         tk.Button(button_frame, text="Automatisk Plukking",
@@ -241,8 +241,11 @@ class ManualScreen(tk.Frame):
                   command=lambda: twist_publisher.send_msg("PUMP_OFF"), **button_style).pack(pady=10)
 
         tk.Button(button_frame, text="Tilbake", width=10,
-                  command=lambda: controller.show_frame(StartScreen), **button_style).pack(pady=30)
+                  command=lambda: self.exit_manual(controller), **button_style).pack(pady=30)
 
+    def exit_manual(self, controller):
+        controller.show_frame(StartScreen)
+        twist_publisher.send_msg("EXIT_MANUAL")  # Notify ROS node if needed
 
     def on_canvas_click(self, event):
         cx = self.canvas_size / 2
