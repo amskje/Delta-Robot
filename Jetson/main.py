@@ -29,6 +29,7 @@ class RobotState(Enum):
     ERROR = auto()
     PAUSED = auto()
     RESETTING = auto()
+    MANUAL = auto()
 
 
 def log(msg: str):
@@ -214,6 +215,10 @@ def main():
                     order = msg
                     ROS.clear_message()
                     state = RobotState.DELIVERING
+                elif msg == "MANUAL":
+                    log("Entering manual mode.")
+                    state = RobotState.MANUAL
+                    ROS.clear_message()
                 else:
                     time.sleep(0.5)  # Prevent rapid idle polling
 
@@ -295,6 +300,48 @@ def main():
                 log("Resetting robot...")
                 # Optional: controller.reset_robot() if implemented
                 state = RobotState.IDLE
+            
+            elif state == RobotState.MANUAL:
+                msg = ROS.get_latest_message()
+
+                if msg:
+                    ROS.clear_message()
+
+                    if msg == "PUMP_ON":
+                        serial.send_message("PUMP_ON")
+                        log("Manual: PUMP ON")
+
+                    elif msg == "PUMP_OFF":
+                        serial.send_message("PUMP_OFF")
+                        log("Manual: PUMP OFF")
+
+                    elif msg == "MOVE_UP":
+                        if controller.current_pos[2] < -305:
+                            controller.go_to_pos(move_pos=(controller.current_pos[0], controller.current_pos[1], controller.current_pos[2] + 5))
+
+                    elif msg == "MOVE_DOWN":
+                        if controller.current_pos[2] > -325:
+                            controller.go_to_pos(move_pos=(controller.current_pos[0], controller.current_pos[1], controller.current_pos[2] - 5))
+
+                    elif msg.startswith("CLICK "):
+                        # Example format: "CLICK 0.25,-0.50"
+                        coord_str = msg.split()[1]
+                        x_str, y_str = coord_str.split(",")
+                        x = float(x_str)
+                        y = float(y_str)
+
+                        controller.go_to_pos(move_pos=(x * 140, y * 140, controller.current_pos[2]), abort_flag=abort_flag)
+                        log(f"Manual: CLICK {coord_str}")
+
+                    elif msg == "EXIT_MANUAL":
+                        log("Exiting manual mode. Returning to IDLE.")
+                        state = RobotState.IDLE
+
+                    else:
+                        log(f"Unknown manual message: {msg}")
+
+                time.sleep(0.05)  # Prevent tight loop
+
 
             else:
                 log("Unknown state. Switching to ERROR.")
