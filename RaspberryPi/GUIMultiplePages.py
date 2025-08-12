@@ -202,52 +202,80 @@ class ManualScreen(tk.Frame):
         super().__init__(parent, bg=BG_color)
         self.controller = controller
 
-        tk.Label(self, text="Manuell", font=("Helvetica", 16, "bold"), fg="#cc0000", bg=BG_color).place(x=20, y=10)
+        tk.Label(self, text="Manuell styring", font=("Helvetica", 16, "bold"),
+                fg="#cc0000", bg=BG_color).place(x=20, y=10)
 
-        # Layout: Left = circle canvas, Right = buttons
+        # --- Main horizontal layout frame ---
         main_frame = tk.Frame(self, bg=BG_color)
         main_frame.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.95, relheight=0.85)
 
-        # Set canvas size slightly smaller than screen height
+        # --- Canvas ---
         canvas_size = int(min(self.winfo_screenheight(), self.winfo_screenwidth()) * 0.7)
         self.canvas_size = canvas_size
         self.radius = canvas_size // 2
 
-        # Canvas with transparent background (BG_color)
         self.canvas = tk.Canvas(main_frame, bg=BG_color, highlightthickness=0,
                                 width=canvas_size, height=canvas_size)
         self.canvas.pack(side="left", padx=20, pady=20)
 
-        # Draw centered white circle (oval)
         self.canvas.create_oval(0, 0, canvas_size, canvas_size, fill="white", outline="black")
 
-        # Bind click handler
         self.canvas.bind("<Button-1>", self.on_canvas_click)
         self.canvas.bind("<B1-Motion>", self.on_canvas_drag)
 
+        # --- Z Slider Frame (middle) ---
+        slider_frame = tk.Frame(main_frame, bg=BG_color)
+        slider_frame.pack(side="left", padx=10, pady=20)
 
-        # Button column on the right
+        self.z_slider = tk.Scale(
+            slider_frame,
+            from_=1.0, to=0.0,
+            resolution=0.01,
+            orient="vertical",
+            length=300,
+            label="Z",
+            fg="white",
+            bg=BG_color,
+            troughcolor="#cccccc",
+            highlightthickness=0,
+            command=self.on_z_slider_change
+        )
+        self.z_slider.set(0.5)
+        self.z_slider.pack()
+
+        # --- Buttons Frame (right) ---
         button_frame = tk.Frame(main_frame, bg=BG_color)
         button_frame.pack(side="right", padx=20, pady=20, fill="y")
 
-        tk.Button(button_frame, text="↑", width=6,
-                  command=lambda: self.move("Up"), **button_style).pack(pady=10)
-
-        tk.Button(button_frame, text="↓", width=6,
-                  command=lambda: self.move("Down"), **button_style).pack(pady=10)
-
         tk.Button(button_frame, text="Pump On", width=10,
-                  command=lambda: twist_publisher.send_msg("PUMP_ON"), **button_style).pack(pady=10)
+                command=lambda: twist_publisher.send_msg("PUMP_ON"), **button_style).pack(pady=10)
 
         tk.Button(button_frame, text="Pump Off", width=10,
-                  command=lambda: twist_publisher.send_msg("PUMP_OFF"), **button_style).pack(pady=10)
+                command=lambda: twist_publisher.send_msg("PUMP_OFF"), **button_style).pack(pady=10)
 
         tk.Button(button_frame, text="Tilbake", width=10,
-                  command=lambda: self.exit_manual(controller), **button_style).pack(pady=30)
+                command=lambda: self.exit_manual(controller), **button_style).pack(pady=30)
+
 
     def exit_manual(self, controller):
         controller.show_frame(StartScreen)
         twist_publisher.send_msg("EXIT_MANUAL")  # Notify ROS node if needed
+    
+    def on_z_slider_change(self, value):
+        now = time.time()
+
+        # Throttle updates to 50ms
+        if hasattr(self, 'last_z_update') and (now - self.last_z_update) < 0.05:
+            return
+        self.last_z_update = now
+
+        try:
+            z = float(value)
+            twist_publisher.send_msg(f"Z {z:.2f}")
+            print(f"Manual Z set to {z:.2f}")
+        except ValueError:
+            pass
+
 
     def on_canvas_click(self, event):
         cx = self.canvas_size / 2
