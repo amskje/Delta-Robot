@@ -202,25 +202,29 @@ class ManualScreen(tk.Frame):
         super().__init__(parent, bg=BG_color)
         self.controller = controller
 
-        # Text in top left corner
         tk.Label(self, text="Manuell", font=("Helvetica", 16, "bold"), fg="#cc0000", bg=BG_color).place(x=20, y=10)
 
-        # Layout: Left (Canvas) and Right (Buttons)
+        # Layout: Left = circle canvas, Right = buttons
         main_frame = tk.Frame(self, bg=BG_color)
         main_frame.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.95, relheight=0.85)
 
-        # --- Canvas (circle) ---
-        self.canvas_size = min(self.winfo_screenheight(), self.winfo_screenwidth()) * 0.7
-        self.canvas = tk.Canvas(main_frame, bg="white", highlightthickness=0, width=self.canvas_size, height=self.canvas_size)
-        self.canvas.pack(side="left", expand=True, fill="both")
+        # Set canvas size slightly smaller than screen height
+        canvas_size = int(min(self.winfo_screenheight(), self.winfo_screenwidth()) * 0.85)
+        self.canvas_size = canvas_size
+        self.radius = canvas_size // 2
 
-        # Draw a big circle (oval)
-        self.canvas.create_oval(10, 10, self.canvas_size-10, self.canvas_size-10, fill="white", outline="black")
+        # Canvas with transparent background (BG_color)
+        self.canvas = tk.Canvas(main_frame, bg=BG_color, highlightthickness=0,
+                                width=canvas_size, height=canvas_size)
+        self.canvas.pack(side="left", padx=20, pady=20)
 
-        # Bind click event
+        # Draw centered white circle (oval)
+        self.canvas.create_oval(0, 0, canvas_size, canvas_size, fill="white", outline="black")
+
+        # Bind click handler
         self.canvas.bind("<Button-1>", self.on_canvas_click)
 
-        # --- Button column ---
+        # Button column on the right
         button_frame = tk.Frame(main_frame, bg=BG_color)
         button_frame.pack(side="right", padx=20, pady=20, fill="y")
 
@@ -236,26 +240,30 @@ class ManualScreen(tk.Frame):
         tk.Button(button_frame, text="Pump Off", width=10,
                   command=lambda: twist_publisher.send_msg("PUMP_OFF"), **button_style).pack(pady=10)
 
-        tk.Button(button_frame, text="Tilbake",
+        tk.Button(button_frame, text="Tilbake", width=10,
                   command=lambda: controller.show_frame(StartScreen), **button_style).pack(pady=30)
 
+
     def on_canvas_click(self, event):
-        canvas_width = self.canvas.winfo_width()
-        canvas_height = self.canvas.winfo_height()
-
-        cx = canvas_width / 2
-        cy = canvas_height / 2
-        radius = canvas_width / 2
-
+        cx = self.canvas_size / 2
+        cy = self.canvas_size / 2
         rel_x = event.x - cx
         rel_y = event.y - cy
 
-        # Optionally ignore clicks outside the circle
-        if rel_x**2 + rel_y**2 > radius**2:
+        distance_squared = rel_x**2 + rel_y**2
+
+        # Only allow clicks inside the circle
+        if distance_squared > self.radius**2:
+            print("Click outside circle — ignored.")
             return
 
-        print(f"Relative click at: ({rel_x:.2f}, {rel_y:.2f})")
-        twist_publisher.send_msg(f"CLICK {rel_x:.2f},{rel_y:.2f}")
+        # Normalize: divide by radius
+        norm_x = rel_x / self.radius
+        norm_y = rel_y / self.radius
+
+        print(f"Normalized click: ({norm_x:.3f}, {norm_y:.3f})")
+        twist_publisher.send_msg(f"CLICK {norm_x:.3f},{norm_y:.3f}")
+
 
 
     def move(self, direction):
