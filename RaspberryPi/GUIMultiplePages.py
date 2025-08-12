@@ -209,7 +209,7 @@ class ManualScreen(tk.Frame):
         main_frame.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.95, relheight=0.85)
 
         # Set canvas size slightly smaller than screen height
-        canvas_size = int(min(self.winfo_screenheight(), self.winfo_screenwidth()) * 0.85)
+        canvas_size = int(min(self.winfo_screenheight(), self.winfo_screenwidth()) * 0.7)
         self.canvas_size = canvas_size
         self.radius = canvas_size // 2
 
@@ -261,8 +261,7 @@ class ManualScreen(tk.Frame):
         norm_x = rel_x / self.radius
         norm_y = rel_y / self.radius
 
-        print(f"Normalized click: ({norm_x:.3f}, {norm_y:.3f})")
-        twist_publisher.send_msg(f"CLICK {norm_x:.3f},{norm_y:.3f}")
+        twist_publisher.send_msg(f"CLICK {norm_x:.3f},{-norm_y:.3f}")
 
 
 
