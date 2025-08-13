@@ -194,10 +194,33 @@ class StartScreen(tk.Frame):
             command=lambda: controller.show_frame(TestScreen),
             **button_style).grid(row=0, column=2, padx=20, pady=10, sticky="ew")
         """
+        # --- Reset (restart) button at top-right ---
+        self.reset_btn = tk.Button(
+            self,
+            text="↻",                # restart symbol
+            command=self.confirm_restart,
+            bg=BG_color,
+            fg="white",
+            activebackground=BG_color,
+            activeforeground="#ffdddd",
+            borderwidth=0,
+            highlightthickness=0,
+            relief="flat",
+            font=("Helvetica", 22, "bold"),
+            cursor="hand2"
+        )
+        # place it at the top-right corner
+        self.reset_btn.place(relx=1.0, y=10, anchor="ne")
+
 
     def exit_to_desktop(self):
         print("Exiting GUI to desktop safely...")
         self.controller.destroy()  # Destroys the main Tk window (if desired)
+
+    def confirm_restart(self):
+        if messagebox.askyesno("Restart", "Start robot-programmet på nytt nå?"):
+            twist_publisher.send_msg("RESTART_APP")
+
 
 class ManualScreen(tk.Frame):
     def __init__(self, parent, controller):
