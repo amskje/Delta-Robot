@@ -194,11 +194,14 @@ class StartScreen(tk.Frame):
             command=lambda: controller.show_frame(TestScreen),
             **button_style).grid(row=0, column=2, padx=20, pady=10, sticky="ew")
         """
-        # --- Reset (restart) button at top-right ---
+        # --- Reset (restart) button at top-right (press-and-hold to confirm) ---
+        self.reset_hold_ms = 1200     # how long to hold (ms)
+        self._reset_job = None
+
         self.reset_btn = tk.Button(
             self,
-            text="↻",                # restart symbol
-            command=self.confirm_restart,
+            text="↻",                  # restart symbol
+            command=lambda: None,      # we handle press/release events instead
             bg=BG_color,
             fg="white",
             activebackground=BG_color,
@@ -206,20 +209,44 @@ class StartScreen(tk.Frame):
             borderwidth=0,
             highlightthickness=0,
             relief="flat",
-            font=("Helvetica", 22, "bold"),
+            font=("Helvetica", 30, "bold"),
             cursor="hand2"
         )
-        # place it at the top-right corner
         self.reset_btn.place(relx=1.0, y=10, anchor="ne")
+
+        # bind press/hold behavior
+        self.reset_btn.bind("<ButtonPress-1>", self.on_reset_press)
+        self.reset_btn.bind("<ButtonRelease-1>", self.on_reset_release)
 
 
     def exit_to_desktop(self):
         print("Exiting GUI to desktop safely...")
         self.controller.destroy()  # Destroys the main Tk window (if desired)
 
-    def confirm_restart(self):
-        if messagebox.askyesno("Restart", "Start robot-programmet på nytt nå?"):
+
+    def on_reset_press(self, _event=None):
+        # show hint while holding
+        self.reset_btn.config(text="Hold…")
+        # schedule the actual restart after hold duration
+        self._reset_job = self.after(self.reset_hold_ms, self._do_reset)
+
+    def on_reset_release(self, _event=None):
+        # if the user lets go early, cancel
+        if self._reset_job:
+            self.after_cancel(self._reset_job)
+            self._reset_job = None
+            self.reset_btn.config(text="↻")  # revert label
+
+    def _do_reset(self):
+        # fired only if button was held long enough
+        self._reset_job = None
+        self.reset_btn.config(text="Restarting…", state="disabled")
+        try:
             twist_publisher.send_msg("RESTART_APP")
+        finally:
+            # optional: re-enable after a moment if your UI stays up
+            self.after(2000, lambda: self.reset_btn.config(text="↻", state="normal"))
+
 
 
 class ManualScreen(tk.Frame):
