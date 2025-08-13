@@ -181,7 +181,7 @@ class StartScreen(tk.Frame):
         button_frame.pack(pady=(0, 40))
         tk.Button(button_frame, text="Manuell Styring",
             command=lambda: [twist_publisher.send_msg("MANUAL"),
-                            twist_publisher.send_msg("MANUAL"),
+                            twist_publisher.send_msg("EXIT_MANUAL"),
                             twist_publisher.send_msg("MANUAL"),
                             controller.show_frame(ManualScreen)],
             **button_style).grid(row=0, column=0, padx=20, pady=10, sticky="ew")
