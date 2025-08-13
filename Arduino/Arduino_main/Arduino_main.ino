@@ -121,10 +121,6 @@ bool checkSensor() {
     float current_mA = voltage / R * 1000.0;
     float pressure_bar = (current_mA - 4.0) * (4.0 / 16.0);
     totalPressure += pressure_bar;
-
-    Serial.print("STATE");
-    Serial.println(pressure_bar);
-
   }
 
   
@@ -477,18 +473,14 @@ case RUNNING:
       motor2.distanceToGo() < lookahead_threshold &&
       motor3.distanceToGo() < lookahead_threshold) {
 
-  
-    
-
     if (droppoffPlannedSpeed) {
-      setSpeed = min(200 + current_index * 300, maxSpeed);
+      //setSpeed = min(200 + current_index * 300, maxSpeed);
+      setSpeed = 800;
     } else {
       setSpeed = maxSpeed;
     }
 
-    //moveToPosition(current_index++, positions, maxSpeed);
     moveToPosition(current_index++, positions, setSpeed);
-
   }
 
   // ───── All Waypoints Done ─────
@@ -499,6 +491,7 @@ case RUNNING:
 
     if (!pickupComplete && current_index_down < num_waypoints_down) {
       currentState = PICKING_UP;
+      delay(25);
       motor1.setMaxSpeed(pickupSpeed);
       motor2.setMaxSpeed(pickupSpeed);
       motor3.setMaxSpeed(pickupSpeed);
