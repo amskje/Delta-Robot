@@ -181,6 +181,8 @@ class StartScreen(tk.Frame):
         button_frame.pack(pady=(0, 40))
         tk.Button(button_frame, text="Manuell Styring",
             command=lambda: [twist_publisher.send_msg("MANUAL"),
+                            twist_publisher.send_msg("MANUAL"),
+                            twist_publisher.send_msg("MANUAL"),
                             controller.show_frame(ManualScreen)],
             **button_style).grid(row=0, column=0, padx=20, pady=10, sticky="ew")
 
@@ -233,6 +235,8 @@ class ManualScreen(tk.Frame):
             resolution=0.01,
             orient="vertical",
             length=300,
+            sliderlength=40,
+            width=30,
             label="Z",
             fg="white",
             bg=BG_color,
@@ -247,14 +251,14 @@ class ManualScreen(tk.Frame):
         button_frame = tk.Frame(main_frame, bg=BG_color)
         button_frame.pack(side="right", padx=20, pady=20, fill="y")
 
-        tk.Button(button_frame, text="Pump On", width=10,
+        tk.Button(button_frame, text="Pumpe på", width=10,
                 command=lambda: twist_publisher.send_msg("PUMP_ON"), **button_style).pack(pady=10)
 
-        tk.Button(button_frame, text="Pump Off", width=10,
+        tk.Button(button_frame, text="Pumpe av", width=10,
                 command=lambda: twist_publisher.send_msg("PUMP_OFF"), **button_style).pack(pady=10)
 
         tk.Button(button_frame, text="Tilbake", width=10,
-                command=lambda: self.exit_manual(controller), **button_style).pack(pady=30)
+                command=lambda: self.exit_manual(controller), **button_style).pack(side="bottom", pady=30)
 
 
     def exit_manual(self, controller):
@@ -495,19 +499,19 @@ class AutomaticScreen(tk.Frame):
         if self.active_twist:
             self.waiting_animation_running = False
             self.loading_label_status.config(text=f"Tomt for {self.active_twist}")
-            self.after(2000, self.close_overlay)
+            self.after(4000, self.close_overlay)
 
     def handle_twist_delivered(self):
         if self.active_twist:
             self.waiting_animation_running = False
             self.loading_label_status.config(text=f"{self.active_twist} levert")
-            self.after(2000, self.close_overlay)
+            self.after(4000, self.close_overlay)
     
     def handle_twist_lost(self):
         if self.active_twist:
             self.waiting_animation_running = False
             self.loading_label_status.config(text=f"{self.active_twist} mistet. Prøv igjen.")
-            self.after(2000, self.close_overlay)
+            self.after(4000, self.close_overlay)
 
 def reboot_app(app_to_close):
     print("🛑 REBOOT message received — exiting app.")
