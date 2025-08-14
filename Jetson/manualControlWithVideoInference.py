@@ -58,8 +58,8 @@ def main():
 
     # === Move robot to photo position
     print("[Control] Moving robot to camera view position...")
-    controller.go_to_pos(move_pos=(0, 0, -300))
-    controller.go_to_pos(move_pos=(-120, 80, -300))
+    controller.go_to_pos(move_pos=(0, 0, controller.Z_WORKING))
+    controller.go_to_pos(move_pos=(-120, 80, controller.Z_WORKING))
 
     # === Robot control loop
     current_position = conCFG.INITIAL_POSITION
