@@ -1,25 +1,18 @@
 import time
 import rclpy
 from enum import Enum, auto
-
 import modules.vision as vision
 import modules.comms as comms
 import modules.control as control
 import modules.kinematics as kinematics
-
-
 import numpy as np
 import threading
 import sys
 import time
-
-#Teset, for middlertidig keyboard knapp d
 import sys
 import select
-#Teset, for middlertidig keyboard knapp d
 
 
-import psutil
 
 RESTART_EXIT_CODE = 42
 
@@ -173,7 +166,6 @@ def main():
 
                 
 
-                #Teset, for middlertidig keyboard knapp d
 
                 # Check for 'd' key to simulate "daim" message
                 if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
@@ -244,7 +236,6 @@ def main():
                         state = RobotState.DELIVERING
                         continue
 
-                #Teset, for middlertidig keyboard knapp d
                 
 
 
