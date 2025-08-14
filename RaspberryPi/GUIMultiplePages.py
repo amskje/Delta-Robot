@@ -2,7 +2,6 @@
 import tkinter as tk
 from PIL import Image, ImageTk
 from enum import Enum
-from tkinter import messagebox
 
 import rclpy
 from rclpy.node import Node
@@ -160,16 +159,6 @@ class StartScreen(tk.Frame):
         super().__init__(parent, bg=BG_color)
         self.controller = controller
 
-        """
-        tk.Button(
-            self,
-            text="Exit to Desktop",
-            command=self.exit_to_desktop,
-            **button_style
-        ).place(x=20, y=10, anchor="nw")
-        """
-
-
         logo_img = Image.open("pictures/DRLogo.png")
         logo_img.thumbnail((400, 200), Image.Resampling.LANCZOS)
         self.logo_photo = ImageTk.PhotoImage(logo_img)
@@ -181,19 +170,13 @@ class StartScreen(tk.Frame):
         button_frame.pack(pady=(0, 40))
         tk.Button(button_frame, text="Manuell Styring",
             command=lambda: [twist_publisher.send_msg("MANUAL"),
-                            twist_publisher.send_msg("EXIT_MANUAL"),
-                            twist_publisher.send_msg("MANUAL"),
                             controller.show_frame(ManualScreen)],
             **button_style).grid(row=0, column=0, padx=20, pady=10, sticky="ew")
 
         tk.Button(button_frame, text="Automatisk Plukking",
             command=lambda: controller.show_frame(AutomaticScreen),
             **button_style).grid(row=0, column=1, padx=20, pady=10, sticky="ew")
-        """"
-        tk.Button(button_frame, text="Test Modus",
-            command=lambda: controller.show_frame(TestScreen),
-            **button_style).grid(row=0, column=2, padx=20, pady=10, sticky="ew")
-        """
+        
         # --- Reset (restart) button at top-right (press-and-hold to confirm) ---
         self.reset_hold_ms = 1200     # how long to hold (ms)
         self._reset_job = None
@@ -243,6 +226,7 @@ class StartScreen(tk.Frame):
         self.reset_btn.config(text="Restarting…", state="disabled")
         try:
             twist_publisher.send_msg("RESTART_APP")
+            self.controller.show_frame(LoadingScreen)
         finally:
             # optional: re-enable after a moment if your UI stays up
             self.after(2000, lambda: self.reset_btn.config(text="↻", state="normal"))
@@ -549,19 +533,19 @@ class AutomaticScreen(tk.Frame):
         if self.active_twist:
             self.waiting_animation_running = False
             self.loading_label_status.config(text=f"Tomt for {self.active_twist}")
-            self.after(4000, self.close_overlay)
+            self.after(3000, self.close_overlay)
 
     def handle_twist_delivered(self):
         if self.active_twist:
             self.waiting_animation_running = False
             self.loading_label_status.config(text=f"{self.active_twist} levert")
-            self.after(4000, self.close_overlay)
+            self.after(3000, self.close_overlay)
     
     def handle_twist_lost(self):
         if self.active_twist:
             self.waiting_animation_running = False
             self.loading_label_status.config(text=f"{self.active_twist} mistet. Prøv igjen.")
-            self.after(4000, self.close_overlay)
+            self.after(3000, self.close_overlay)
 
 def reboot_app(app_to_close):
     print("🛑 REBOOT message received — exiting app.")
