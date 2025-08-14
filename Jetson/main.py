@@ -129,8 +129,8 @@ def main():
 
 
     #Move robot to position to take picture
-    controller.go_to_pos(move_pos = (0, 0, -305), abort_flag=abort_flag)
-    controller.go_to_pos(move_pos = (-120, 80, -305), abort_flag=abort_flag)
+    controller.go_to_pos(move_pos = (0, 0, -300), abort_flag=abort_flag)
+    controller.go_to_pos(move_pos = (-120, 80, -300), abort_flag=abort_flag)
 
 
     
@@ -275,13 +275,13 @@ def main():
                         
                         # Move robot to a different position for the next attempt
                         if retry_count == 0:
-                            controller.go_to_pos(move_pos=(120, 80, -305), abort_flag=abort_flag)
+                            controller.go_to_pos(move_pos=(120, 80, -300), abort_flag=abort_flag)
                         if retry_count == 1:
-                            controller.go_to_pos(move_pos=(120, -80, -305), abort_flag=abort_flag)
+                            controller.go_to_pos(move_pos=(120, -80, -300), abort_flag=abort_flag)
                         if retry_count == 2:
-                            controller.go_to_pos(move_pos=(-120, -80, -305), abort_flag=abort_flag)
+                            controller.go_to_pos(move_pos=(-120, -80, -300), abort_flag=abort_flag)
                         if retry_count == 3:
-                            controller.go_to_pos(move_pos=(-120, 80, -305), abort_flag=abort_flag)
+                            controller.go_to_pos(move_pos=(-120, 80, -300), abort_flag=abort_flag)
                         retry_count += 1
                         time.sleep(1)
 
@@ -293,8 +293,8 @@ def main():
 
                     result_msg = ""
                     success, result_msg = controller.twist_delivery(
-                        target_pos=(target_x, target_y, -305),
-                        dropoff_pos=(-120, 80, -305),
+                        target_pos=(target_x, target_y, -300),
+                        dropoff_pos=(-120, 80, -300),
                         twist_type=order,
                         abort_flag=abort_flag
                     )
@@ -391,8 +391,8 @@ def main():
                         state = RobotState.IDLE
                         serial.send_message("AUTOMATIC")
                         serial.wait_for_ack("EXIT_MANUAL")
-                        controller.go_to_pos(move_pos = (0, 0, -305), abort_flag=abort_flag)
-                        controller.go_to_pos(move_pos = (-120, 80, -305), abort_flag=abort_flag)
+                        controller.go_to_pos(move_pos = (0, 0, -300), abort_flag=abort_flag)
+                        controller.go_to_pos(move_pos = (-120, 80, -300), abort_flag=abort_flag)
 
                     else:
                         log(f"Unknown manual message: {msg}")

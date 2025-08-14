@@ -9,7 +9,7 @@ class TwistPublisher(Node):
 
     def __init__(self):
         super().__init__('twist_publisher')
-        self.publisher_ = self.create_publisher(String, 'PI_command', 10)
+        self.publisher_ = self.create_publisher(String, 'PI_feedback', 10)
 
     def send_twist(self, twist_name: str):
         msg = String()
@@ -31,7 +31,7 @@ def run_publisher():
 
         #send test message
         time.sleep(1.0)#give time to init
-        twist_publisher.send_twist("hei, dette er en test")
+        twist_publisher.send_twist("REBOOT")
 
     #give time to send, and then shutdown
     time.sleep(1.0)

@@ -15,14 +15,14 @@ class ControlConfig:
     # Base parameters
     WAYPOINTS: int = 10 # Minimum 2
     WAYPOINTS_DOWN: int = 10 #Minimum 2
-    DOWN_MM: int = 63 #Total mm robot can move down after hitting target pos
-    DOWN_DAIM_MM: int = 72
-    DOWN_NOTTI_MM: int = 55
+    DOWN_MM: int = 45 #Total mm robot can move down after hitting target pos
+    DOWN_DAIM_MM: int = 50
+    DOWN_NOTTI_MM: int = 37
     INITIAL_POSITION: kinematics.Position = kinematics.Position(HOME_X, HOME_Y, HOME_Z)  # Initial position after goHome()
 
      # New fallback positions
-    FALLBACK_STAGE1: Tuple[float, float, float] = (0.0, 0.0, -305.0)
-    FALLBACK_STAGE2: Tuple[float, float, float] = (-120.0, 80.0, -305.0)
+    FALLBACK_STAGE1: Tuple[float, float, float] = (0.0, 0.0, -300.0)
+    FALLBACK_STAGE2: Tuple[float, float, float] = (-120.0, 80.0, -300.0)
 
 def config() -> ControlConfig:
     return ControlConfig()
@@ -32,29 +32,34 @@ class DeltaRobotController:
         self.serial = serial_comm  # Instance of SerialComm
         self.current_pos = [HOME_X, HOME_Y, HOME_Z] # Track robot position in mm
 
-        with open('homography_ROBOT_WORLD_BOTH.json', 'r') as file:
+        with open('homography_ROBOT_WORLD_330_REALDEAL.json', 'r') as file:
             H_robot = json.load(file)
+        
+        self.H_robot_inv = np.linalg.inv(H_robot)
 
-        #self.H_robot_inv = np.linalg.inv(H_robot)
-
-        self.H_z1 = np.array(H_robot["H_z1"]) # z1 = -345
-        self.H_z2 = np.array(H_robot["H_z2"]) # z2 = -305
+        """
+        self.H_z1 = np.array(H_robot["H_z1"]) # z1 = -335
+        self.H_z2 = np.array(H_robot["H_z2"]) # z2 = -296
 
         self.H_z1_inv = np.linalg.inv(self.H_z1)
         self.H_z2_inv = np.linalg.inv(self.H_z2)
         print(H_robot)
+        """
 
     
     def correct_target(self, x_desired, y_desired, z):
         """Transform a target point from real-world into robot coordinates"""
         pt = np.array([[[x_desired, y_desired]]], dtype=np.float32)
-        #corrected = cv2.perspectiveTransform(pt, self.H_robot_inv)
+        corrected = cv2.perspectiveTransform(pt, self.H_robot_inv)
 
+        """
         if (z < -310):
             corrected = cv2.perspectiveTransform(pt, self.H_z1_inv)
         else:
             corrected = cv2.perspectiveTransform(pt, self.H_z2_inv)
-
+        """
+        
+        
 
         return corrected[0][0]
 

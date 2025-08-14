@@ -58,8 +58,8 @@ def main():
 
     # === Move robot to photo position
     print("[Control] Moving robot to camera view position...")
-    controller.go_to_pos(move_pos=(0, 0, -305))
-    controller.go_to_pos(move_pos=(-120, 80, -305))
+    controller.go_to_pos(move_pos=(0, 0, -300))
+    controller.go_to_pos(move_pos=(-120, 80, -300))
 
     # === Robot control loop
     current_position = conCFG.INITIAL_POSITION
@@ -83,6 +83,7 @@ def main():
 
             # Apply homography correction
             x_corr, y_corr = correct_target(x, y, H_robot_inv)
+            x_corr, y_corr = x, y
 
             angles = []
             kinematics.plan_linear_move(

@@ -456,7 +456,7 @@ def refine_center_by_ellipse(image, bbox, debug=False):
             dist = np.sqrt((refined_x - original_x)**2 + (refined_y - original_y)**2)
 
             # Set a maximum allowed offset (in pixels)
-            max_distance = 10  # tune this value
+            max_distance = 4  # tune this value
 
             if dist <= max_distance:
                 return refined_x, refined_y
