@@ -2,7 +2,6 @@
 import tkinter as tk
 from PIL import Image, ImageTk
 from enum import Enum
-from tkinter import messagebox
 
 import rclpy
 from rclpy.node import Node
@@ -160,14 +159,6 @@ class StartScreen(tk.Frame):
         super().__init__(parent, bg=BG_color)
         self.controller = controller
 
-        tk.Button(
-            self,
-            text="Exit to Desktop",
-            command=self.exit_to_desktop,
-            **button_style
-        ).place(x=20, y=10, anchor="nw")
-
-
         logo_img = Image.open("pictures/DRLogo.png")
         logo_img.thumbnail((400, 200), Image.Resampling.LANCZOS)
         self.logo_photo = ImageTk.PhotoImage(logo_img)
@@ -177,64 +168,202 @@ class StartScreen(tk.Frame):
 
         button_frame = tk.Frame(self, bg=BG_color)
         button_frame.pack(pady=(0, 40))
-
-        tk.Button(button_frame, text="Manuell Modus",
-            command=lambda: controller.show_frame(ManualScreen),
+        tk.Button(button_frame, text="Manuell Styring",
+            command=lambda: [twist_publisher.send_msg("MANUAL"),
+                            controller.show_frame(ManualScreen)],
             **button_style).grid(row=0, column=0, padx=20, pady=10, sticky="ew")
 
-        tk.Button(button_frame, text="Automatisk Modus",
+        tk.Button(button_frame, text="Automatisk Plukking",
             command=lambda: controller.show_frame(AutomaticScreen),
             **button_style).grid(row=0, column=1, padx=20, pady=10, sticky="ew")
-        """"
-        tk.Button(button_frame, text="Test Modus",
-            command=lambda: controller.show_frame(TestScreen),
-            **button_style).grid(row=0, column=2, padx=20, pady=10, sticky="ew")
-        """
+        
+        # --- Reset (restart) button at top-right (press-and-hold to confirm) ---
+        self.reset_hold_ms = 1200     # how long to hold (ms)
+        self._reset_job = None
+
+        self.reset_btn = tk.Button(
+            self,
+            text="↻",                  # restart symbol
+            command=lambda: None,      # we handle press/release events instead
+            bg=BG_color,
+            fg="white",
+            activebackground=BG_color,
+            activeforeground="#ffdddd",
+            borderwidth=0,
+            highlightthickness=0,
+            relief="flat",
+            font=("Helvetica", 30, "bold"),
+            cursor="hand2"
+        )
+        self.reset_btn.place(relx=1.0, y=10, anchor="ne")
+
+        # bind press/hold behavior
+        self.reset_btn.bind("<ButtonPress-1>", self.on_reset_press)
+        self.reset_btn.bind("<ButtonRelease-1>", self.on_reset_release)
+
 
     def exit_to_desktop(self):
         print("Exiting GUI to desktop safely...")
         self.controller.destroy()  # Destroys the main Tk window (if desired)
 
-# --- Manual Screen ---
-class ManualScreen(tk.Frame):
 
+    def on_reset_press(self, _event=None):
+        # show hint while holding
+        self.reset_btn.config(text="Hold…")
+        # schedule the actual restart after hold duration
+        self._reset_job = self.after(self.reset_hold_ms, self._do_reset)
+
+    def on_reset_release(self, _event=None):
+        # if the user lets go early, cancel
+        if self._reset_job:
+            self.after_cancel(self._reset_job)
+            self._reset_job = None
+            self.reset_btn.config(text="↻")  # revert label
+
+    def _do_reset(self):
+        # fired only if button was held long enough
+        self._reset_job = None
+        self.reset_btn.config(text="Restarting…", state="disabled")
+        try:
+            twist_publisher.send_msg("RESTART_APP")
+            self.controller.show_frame(LoadingScreen)
+        finally:
+            # optional: re-enable after a moment if your UI stays up
+            self.after(2000, lambda: self.reset_btn.config(text="↻", state="normal"))
+
+
+
+class ManualScreen(tk.Frame):
     def __init__(self, parent, controller):
         super().__init__(parent, bg=BG_color)
         self.controller = controller
 
-        # Text in top left corner
-        tk.Label(self, text="Manuell", font=("Helvetica", 16, "bold"), fg="#cc0000", bg=BG_color).place(x=20, y=10)
+        tk.Label(self, text="Manuell styring", font=("Helvetica", 16, "bold"),
+                fg="#cc0000", bg=BG_color).place(x=20, y=10)
 
-        center = tk.Frame(self, bg=BG_color)
-        center.place(relx=0.5, rely=0.5, anchor="center")
+        # --- Main horizontal layout frame ---
+        main_frame = tk.Frame(self, bg=BG_color)
+        main_frame.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.95, relheight=0.85)
 
-        tk.Button(center, text="↑", width=5,
-                  command=lambda: self.move("Up"),
-                  **button_style).grid(row=1, column=1, pady=5)
+        # --- Canvas ---
+        canvas_size = int(min(self.winfo_screenheight(), self.winfo_screenwidth()) * 0.7)
+        self.canvas_size = canvas_size
+        self.radius = canvas_size // 2
 
-        tk.Button(center, text="←", width=5,
-                  command=lambda: self.move("Left"),
-                  **button_style).grid(row=2, column=0, padx=5)
+        self.canvas = tk.Canvas(main_frame, bg=BG_color, highlightthickness=0,
+                                width=canvas_size, height=canvas_size)
+        self.canvas.pack(side="left", padx=20, pady=20)
 
-        tk.Button(center, text="↓", width=5,
-                  command=lambda: self.move("Down"),
-                  **button_style).grid(row=3, column=1, pady=5)
+        self.canvas.create_oval(0, 0, canvas_size, canvas_size, fill="white", outline="black")
 
-        tk.Button(center, text="→", width=5,
-                  command=lambda: self.move("Right"),
-                  **button_style).grid(row=2, column=2, padx=5)
+        self.canvas.bind("<Button-1>", self.on_canvas_click)
+        self.canvas.bind("<B1-Motion>", self.on_canvas_drag)
 
-        # Create a "Tilbake" button placed at the bottom of the screen
-        tk.Button(
-            self,
-            text="Tilbake",
-            command=lambda: controller.show_frame(StartScreen),
-            **button_style
-        ).place(relx=0.5, rely=0.9, anchor="center")
+        # --- Z Slider Frame (middle) ---
+        slider_frame = tk.Frame(main_frame, bg=BG_color)
+        slider_frame.pack(side="left", padx=10, pady=20)
+
+        self.z_slider = tk.Scale(
+            slider_frame,
+            from_=1.0, to=0.0,
+            resolution=0.01,
+            orient="vertical",
+            length=300,
+            sliderlength=40,
+            width=30,
+            label="Z",
+            fg="white",
+            bg=BG_color,
+            troughcolor="#cccccc",
+            highlightthickness=0,
+            command=self.on_z_slider_change
+        )
+        self.z_slider.set(1)
+        self.z_slider.pack()
+
+        # --- Buttons Frame (right) ---
+        button_frame = tk.Frame(main_frame, bg=BG_color)
+        button_frame.pack(side="right", padx=20, pady=20, fill="y")
+
+        tk.Button(button_frame, text="Pumpe på", width=10,
+                command=lambda: twist_publisher.send_msg("PUMP_ON"), **button_style).pack(pady=10)
+
+        tk.Button(button_frame, text="Pumpe av", width=10,
+                command=lambda: twist_publisher.send_msg("PUMP_OFF"), **button_style).pack(pady=10)
+
+        tk.Button(button_frame, text="Tilbake", width=10,
+                command=lambda: self.exit_manual(controller), **button_style).pack(side="bottom", pady=30)
+
+
+    def exit_manual(self, controller):
+        controller.show_frame(StartScreen)
+        twist_publisher.send_msg("EXIT_MANUAL")  # Notify ROS node if needed
+    
+    def on_z_slider_change(self, value):
+        now = time.time()
+
+        # Throttle updates to 50ms
+        if hasattr(self, 'last_z_update') and (now - self.last_z_update) < 0.01:
+            return
+        self.last_z_update = now
+
+        try:
+            z = float(value)
+            twist_publisher.send_msg(f"Z {z:.2f}")
+            print(f"Manual Z set to {z:.2f}")
+        except ValueError:
+            pass
+
+
+    def on_canvas_click(self, event):
+        cx = self.canvas_size / 2
+        cy = self.canvas_size / 2
+        rel_x = event.x - cx
+        rel_y = event.y - cy
+
+        distance_squared = rel_x**2 + rel_y**2
+
+        # Only allow clicks inside the circle
+        if distance_squared > self.radius**2:
+            print("Click outside circle — ignored.")
+            return
+
+        # Normalize: divide by radius
+        norm_x = rel_x / self.radius
+        norm_y = rel_y / self.radius
+
+        twist_publisher.send_msg(f"CLICK {norm_x:.3f},{-norm_y:.3f}")
+
+    def on_canvas_drag(self, event):
+        now = time.time()
+        
+        # Check if enough time has passed since the last message
+        if hasattr(self, 'last_drag_time') and (now - self.last_drag_time) < 0.01:
+            return
+        self.last_drag_time = now
+
+        # Center of the circle
+        cx = self.canvas_size / 2
+        cy = self.canvas_size / 2
+        rel_x = event.x - cx
+        rel_y = event.y - cy
+
+        # Restrict to inside the circle
+        if rel_x**2 + rel_y**2 > self.radius**2:
+            return
+
+        # Normalize to [-1.0, 1.0]
+        norm_x = rel_x / self.radius
+        norm_y = rel_y / self.radius
+
+        # Send to ROS
+        twist_publisher.send_msg(f"WAYPOINT {norm_x:.3f},{norm_y:.3f}")
+
 
 
     def move(self, direction):
-        print("Robot moves", direction)
+        twist_publisher.send_msg(f"MOVE_{direction.upper()}")
+
 
 # --- Automatic Screen ---
 class AutomaticScreen(tk.Frame):
@@ -404,19 +533,19 @@ class AutomaticScreen(tk.Frame):
         if self.active_twist:
             self.waiting_animation_running = False
             self.loading_label_status.config(text=f"Tomt for {self.active_twist}")
-            self.after(2000, self.close_overlay)
+            self.after(3000, self.close_overlay)
 
     def handle_twist_delivered(self):
         if self.active_twist:
             self.waiting_animation_running = False
             self.loading_label_status.config(text=f"{self.active_twist} levert")
-            self.after(2000, self.close_overlay)
+            self.after(3000, self.close_overlay)
     
     def handle_twist_lost(self):
         if self.active_twist:
             self.waiting_animation_running = False
             self.loading_label_status.config(text=f"{self.active_twist} mistet. Prøv igjen.")
-            self.after(2000, self.close_overlay)
+            self.after(3000, self.close_overlay)
 
 def reboot_app(app_to_close):
     print("🛑 REBOOT message received — exiting app.")
