@@ -2,58 +2,122 @@ from . import comms
 from . import kinematics
 from typing import List, Tuple
 from dataclasses import dataclass
+import numpy as np
+import json
+import cv2
+
+HOME_X = 3.038
+HOME_Y = 0.1655
+HOME_Z = -247.34
 
 @dataclass
 class ControlConfig:
     # Base parameters
-    WAYPOINTS: int = 5 # Minimum 2
-    WAYPOINTS_DOWN: int = 5 #Minimum 2
-    DOWN_MM: int = 36 #Total mm robot can move down after hitting target pos
-    INITIAL_POSITION: List[float] = kinematics.Position(3.373, 0.184, 257.886)  # Initial position after goHome()
+    WAYPOINTS: int = 10 # Minimum 2
+    WAYPOINTS_DOWN: int = 10 #Minimum 2
+    DOWN_MM: int = 45 #Total mm robot can move down after hitting target pos
+    DOWN_DAIM_MM: int = 50
+    DOWN_NOTTI_MM: int = 37
+    INITIAL_POSITION: kinematics.Position = kinematics.Position(HOME_X, HOME_Y, HOME_Z)  # Initial position after goHome()
+
+     # New fallback positions
+    FALLBACK_STAGE1: Tuple[float, float, float] = (0.0, 0.0, -300.0)
+    FALLBACK_STAGE2: Tuple[float, float, float] = (-120.0, 80.0, -300.0)
 
 def config() -> ControlConfig:
     return ControlConfig()
 
-
 class DeltaRobotController:
     def __init__(self, serial_comm: comms.SerialComm):
         self.serial = serial_comm  # Instance of SerialComm
-        self.current_pos = [3.373, 0.184, 257.886] # Track robot position in mm
+        self.current_pos = [HOME_X, HOME_Y, HOME_Z] # Track robot position in mm
+
+        with open('homography_ROBOT_WORLD_330_REALDEAL.json', 'r') as file:
+            H_robot = json.load(file)
+        
+        self.H_robot_inv = np.linalg.inv(H_robot)
+
+        """
+        self.H_z1 = np.array(H_robot["H_z1"]) # z1 = -335
+        self.H_z2 = np.array(H_robot["H_z2"]) # z2 = -296
+
+        self.H_z1_inv = np.linalg.inv(self.H_z1)
+        self.H_z2_inv = np.linalg.inv(self.H_z2)
+        print(H_robot)
+        """
+
+    
+    def correct_target(self, x_desired, y_desired, z):
+        """Transform a target point from real-world into robot coordinates"""
+        pt = np.array([[[x_desired, y_desired]]], dtype=np.float32)
+        corrected = cv2.perspectiveTransform(pt, self.H_robot_inv)
+
+        """
+        if (z < -310):
+            corrected = cv2.perspectiveTransform(pt, self.H_z1_inv)
+        else:
+            corrected = cv2.perspectiveTransform(pt, self.H_z2_inv)
+        """
+        
+        
+
+        return corrected[0][0]
+
+    def check_abort(self, abort_flag, msg=""):
+        if abort_flag and abort_flag.is_set():
+            print(f"[Control] ABORT detected {msg}. Retreating...")
+            return True
+        return False
 
 
-    def send_angles_sequence(self, angles_list, angles_down_list, down_included):
+    def send_angles_sequence(self, angles_list, angles_down_list, down_included, abort_flag=None):
         self.serial.send_message("POSITION")
-        if not self.serial.wait_for_ack("READY"):
-            print("[Error] Arduino not ready for POSITION.")
-            return False
+        ack = self.serial.wait_for_ack("READY")
+        if ack != True:
+            print(f"[Error] Arduino not ready for POSITION. Got: {ack}")
+            return ack  # Can be unexpected msg or False (timeout)
 
         for angles in angles_list:
+            if self.check_abort(abort_flag, "before pickup"):
+                aborted = self.serial.wait_for_ack("ABORTED")
+                if aborted is True:
+                    print("Arduino did abort, ready to move")
+                else:
+                    print("arduino did not abort and is not ready to move")
+                return "ABORTED"
             a1, a2, a3 = angles
             msg = f"ANGLES {int(a1)}, {int(a2)}, {int(a3)}"
             self.serial.send_message(msg)
 
-        if (down_included == True):
-            #Send the moving down angles 
+        if down_included:
             self.serial.send_message("DOWN")
-            if not self.serial.wait_for_ack("READY"):
-                print("[Error] Arduino not ready for down POSITION.")
-                return False
+            ack = self.serial.wait_for_ack("READY")
+            if ack != True:
+                print(f"[Error] Arduino not ready for DOWN. Got: {ack}")
+                return ack
             
             for angles_down in angles_down_list:
+                if self.check_abort(abort_flag, "before pickup"):
+                    aborted = self.serial.wait_for_ack("ABORTED")
+                    if aborted is True:
+                        print("Arduino did abort, ready to move")
+                    else:
+                        print("arduino did not abort and is not ready to move")
+                    return "ABORTED"
                 a1, a2, a3 = angles_down
                 msg = f"ANGLES {int(a1)}, {int(a2)}, {int(a3)}"
                 self.serial.send_message(msg)
 
-
-
         self.serial.send_message("GO")
-        if not self.serial.wait_for_ack("DONE"):
-            print("[Error] Arduino did not complete GO.")
-            return False
-        
-        return True
+        ack = self.serial.wait_for_ack("DONE")
+        if ack != True:
+            print(f"[Error] Arduino did not complete GO. Got: {ack}")
+            return ack
 
-    def twist_delivery(self, target_pos: Tuple[float, float, float], dropoff_pos: Tuple[float, float, float]):
+        return "SUCCESS"
+
+
+    def twist_delivery(self, target_pos: Tuple[float, float, float], dropoff_pos: Tuple[float, float, float], twist_type: str, include_dropoff: bool = True, abort_flag=None):
         """
         Executes a full delivery sequence from current position to target, then drop-off.
         
@@ -66,58 +130,122 @@ class DeltaRobotController:
         # === Phase 1: Plan path to pickup
         pickup_angles = []
         down_angles = []
-         
-        kinematics.plan_linear_move(self.current_pos[0]*10, self.current_pos[1]*10, self.current_pos[2],
-                                    target_pos[0]*10, target_pos[1]*10, target_pos[2], pickup_angles, waypoints=config().WAYPOINTS)
 
-        #Pre calculated steps for moving down if twist is not picked up, maby change the number 25
-        #kan kanskje sende den 6 cm ned, også i arduino code ta å bruke 1/3 av way punktene av gangen
-        kinematics.plan_linear_move(target_pos[0]*10, target_pos[1]*10, target_pos[2],
-                                    target_pos[0]*10, target_pos[1]*10, target_pos[2]+config().DOWN_MM, down_angles, waypoints=config().WAYPOINTS_DOWN)
-
-
-
-        #Her får man done for arduino hvis den har plukket opp twsiten
-        if not self.send_angles_sequence(pickup_angles, down_angles, down_included=True):
-            return False
-
-        # === Pickup operation
-
-
-        #self.serial.send_message("PUMP_ON")
+        # Map robot coordinates to real world
+        x_corrected, y_corrected = self.correct_target(target_pos[0], target_pos[1], target_pos[2])
         
-        #if not self.serial.wait_for_ack("PICKED_UP"):
-         #   print("[Error] Pickup not acknowledged.")
-         #   return False
+        kinematics.plan_linear_move(self.current_pos[0], self.current_pos[1], self.current_pos[2],
+                                    x_corrected, y_corrected, target_pos[2], pickup_angles, waypoints=config().WAYPOINTS)
+
+
+        #Plan the moving down waypoints
+        if (twist_type == 'Daim'):   
+            kinematics.plan_linear_move(x_corrected, y_corrected, target_pos[2],
+                            x_corrected, y_corrected, target_pos[2]-config().DOWN_DAIM_MM, down_angles, waypoints=config().WAYPOINTS_DOWN)
+        elif (twist_type == 'Notti'):
+            kinematics.plan_linear_move(x_corrected, y_corrected, target_pos[2],
+                            x_corrected, y_corrected, target_pos[2]-config().DOWN_NOTTI_MM, down_angles, waypoints=config().WAYPOINTS_DOWN)
+        else:
+            kinematics.plan_linear_move(x_corrected, y_corrected, target_pos[2],
+                            x_corrected, y_corrected, target_pos[2]-config().DOWN_MM, down_angles, waypoints=config().WAYPOINTS_DOWN)
+
         
-        self.current_pos = list(target_pos) #husk, må gjøre slik at etter roboten har plukket opp må den vite akkuret hvor langt ned den har gått
+        pickup_result = self.send_angles_sequence(pickup_angles, down_angles, down_included=True, abort_flag=abort_flag)
+
+
+        if pickup_result != "SUCCESS":
+            if pickup_result in ["NOT_PICKED_UP", "DROPPED", "ABORTED", "LIMIT"]:
+                print(f"[Control] Twist delivery not completed, message recived {pickup_result}. Moving to fallback position.")
+                #self.retreat_home(abort_flag=abort_flag)
+                return False, pickup_result
+            else:
+                print(f"[Control] Error during pickup: {pickup_result}")
+                return False, pickup_result
+        else: 
+            # Update robot position
+            self.current_pos = [x_corrected, y_corrected, target_pos[2]] 
+
+
+    
+        # === Phase 2: Plan path to drop-off
         
         print(f"[Control] Planning move to drop-off at {dropoff_pos}...")
 
-        # === Phase 2: Plan path to drop-off
+        # Adjust dropoff pos with H
+        x_dropoff_corrected, y_dropoff_corrected = self.correct_target(dropoff_pos[0], dropoff_pos[1], target_pos[2])
         
-        dropoff_angles = []
-        kinematics.plan_linear_move(
-            *target_pos,
-            *dropoff_pos,
-            dropoff_angles,
-            waypoints=config().WAYPOINTS
-        )
+
+        if include_dropoff:
+            dropoff_angles = []
+            kinematics.plan_linear_move(
+                *target_pos,
+                x_dropoff_corrected, y_dropoff_corrected, dropoff_pos[2],
+                dropoff_angles,
+                waypoints=config().WAYPOINTS
+            )
 
 
         # === Release
-        #self.serial.send_message("PUMP_OFF")
         self.serial.send_message("DROPP")
 
+        pickup_result = self.send_angles_sequence(dropoff_angles, [], down_included=False, abort_flag=abort_flag)
 
+        if pickup_result != "SUCCESS":
+            if pickup_result in ["NOT_PICKED_UP", "DROPPED", "ABORTED", "LIMIT"]:
+                print(f"[Control] Twist delivery not completed, message recived {pickup_result}. Moving to fallback position.")
+                #self.retreat_home(abort_flag=None)
+                return False, pickup_result
 
-        if not self.send_angles_sequence(dropoff_angles, [], down_included=False):
+            else:
+                print(f"[Control] Error during pickup: {pickup_result}")
+                return False, pickup_result
+        else:
+            self.current_pos = list(dropoff_pos)
+            # Update robot state
+            print("[Control] Delivery complete.")
+            return True, "SUCCESS"
+
+        
+ 
+    def go_to_pos(self, move_pos: Tuple[float, float, float],  abort_flag=None):
+        """
+        Moves the robot to choosen x, y and z coordinates
+        
+        Args:
+            move_pos (List[int]): [x, y, z] coordinates of point to move to
+        """
+        print(f"[Control] Planning move to pickup at {move_pos}...")
+
+        down_angles = []
+        move_angles = []
+
+        x_corrected, y_corrected = self.correct_target(move_pos[0], move_pos[1], move_pos[2])
+ 
+        kinematics.plan_linear_move(self.current_pos[0], self.current_pos[1], self.current_pos[2],
+                                    x_corrected, y_corrected, move_pos[2], move_angles, waypoints=config().WAYPOINTS)
+
+        if not self.send_angles_sequence(move_angles, down_angles, down_included=False, abort_flag=abort_flag):
             return False
-        
 
+        self.current_pos = [x_corrected, y_corrected, move_pos[2]] 
         
-    
-        # Update robot state
-        self.current_pos = list(dropoff_pos)
-        print("[Control] Delivery complete.")
+        print("[Control] Move complete.")
         return True
+    
+        
+    def retreat_home(self, abort_flag=None):
+        self.current_pos = [HOME_X, HOME_Y, HOME_Z]
+
+        fallback1 = config().FALLBACK_STAGE1
+        fallback2 = config().FALLBACK_STAGE2
+
+        success1 = self.go_to_pos(fallback1, abort_flag=None)
+        success2 = self.go_to_pos(fallback2, abort_flag=None)
+
+        if success2:
+            self.current_pos = list(fallback2)
+        elif success1:
+            self.current_pos = list(fallback1)
+        else:
+            print("[Control] Retreat failed — abort might be blocking motion.")
+            

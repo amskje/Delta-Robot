@@ -1,6 +1,11 @@
 import cv2
+import numpy as np
+import threading
+import time
+import torch
+from dataclasses import dataclass, field
 from ultralytics import YOLO
-from dataclasses import dataclass
+
 
 @dataclass
 class VisionConfig:
@@ -10,8 +15,13 @@ class VisionConfig:
     SURFACE_WIDTH_CM: float = 29.6
     SURFACE_HEIGHT_CM: float = 29.6
     CAM_TO_ROBOT_Y_OFFSET_CM: float = 1.6
-    MODEL_PATH: str = "modules/best.pt"
-    CONF_THRESHOLD: float = 0.75
+    MODEL_PATH: str = "modules/weightsV3.pt"
+    CONF_THRESHOLD: float = 0.7
+    WORKING_RADIUS_CM: float = 14.8
+    EXCLUSION_RADIUS_CM: float = 6.0
+    EXCLUSION_ANGLE_DEG: float = 60.0
+    EXCLUSION_OFFSET: float = 1.14
+    
 
     # Derived parameters will be computed
     PIXEL_TO_CM_X: float = None
@@ -29,6 +39,21 @@ class VisionConfig:
         self.CM_TO_PIXEL_Y = self.FRAME_HEIGHT / self.SURFACE_HEIGHT_CM
         self.IMG_CENTER_X = self.FRAME_WIDTH // 2
         self.IMG_CENTER_Y = int((self.FRAME_HEIGHT // 2) - (self.CAM_TO_ROBOT_Y_OFFSET_CM / self.PIXEL_TO_CM_Y))
+        self.camera_cal = np.load("camera_calibration.npz")
+        self.mtx = self.camera_cal['camera_matrix']
+        self.dist = self.camera_cal['dist_coeffs']
+        self.H = np.load("homography_camera.npy")
+
+
+@dataclass
+class VisionState:
+    latest_frame: np.ndarray = None
+    latest_detections: list = field(default_factory=list)
+    inference_ready: bool = False
+
+    frame_lock: threading.Lock = field(default_factory=threading.Lock)
+    detections_lock: threading.Lock = field(default_factory=threading.Lock)
+    inference_ready_lock: threading.Lock = field(default_factory=threading.Lock)
 
 def config() -> VisionConfig:
     return VisionConfig()
@@ -46,65 +71,228 @@ gst_pipeline = (
 # Class names
 class_names = [
     "Banan", "Cocos", "Crisp", "Daim", "Fransk", "Golden",
-    "Japp", "Karamell", "Lakris", "Notti", "Toffee", "Eclairs"
+    "Japp", "Karamell", "Lakris", "Notti", "Toffee", "Eclairs", "Marsipan"
 ]
+
 
 # === FUNCTIONS ===
 
-def init_yolo(model_path="modules/best.pt"):
-    """Initialize and return the YOLO model."""
-    return YOLO(model_path)
-
-def detect_target(model, target_class):
-    """
-    Capture one frame and return all matching objects of the given class
-    as (class_name, x_cm, y_cm, confidence) tuples.
-    """
-
+def start_inference_thread(model, config, state: VisionState, stop_event=None):
     cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
+
     if not cap.isOpened():
-        print("Failed to open camera.")
-        return []
+        print("[Vision] ❌ GStreamer camera failed to open")
+        return
+    else:
+        print("[Vision] ✅ GStreamer camera opened successfully")
 
 
-    #Test
-    for _ in range(40):
-        ret, _ = cap.read()
-    #Test
+    def inference_loop():
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        while not (stop_event and stop_event.is_set()):
+            ret, frame = cap.read()
+            if not ret:
+                print("⚠️ Failed to read frame.")
+                time.sleep(0.1)
+                continue
 
-    ret, frame = cap.read()
-    cap.release()
+            with state.frame_lock:
+                state.latest_frame = frame.copy()
 
-    if not ret:
-        print("Failed to capture frame.")
-        return []
+            # Undistort
+            h, w = frame.shape[:2]
+            newcameramtx, _ = cv2.getOptimalNewCameraMatrix(config.mtx, config.dist, (w, h), 1, (w, h))
+            undistorted = cv2.undistort(frame, config.mtx, config.dist, None, newcameramtx)
 
-    results = model(frame, conf=config().CONF_THRESHOLD)[0]
+            results = model(undistorted, device=0, verbose=False)[0]
+
+            # Only set once
+            with state.inference_ready_lock:
+                if not state.inference_ready:
+                    state.inference_ready = True
+                    print("[Vision] ✅ Inference is now ready.")
+
+            boxes_tensor = results.boxes.xyxy.cpu().numpy()
+            confs_tensor = results.boxes.conf.cpu().numpy()
+            class_ids_tensor = results.boxes.cls.cpu().numpy()
+
+            detections = []
+            for i in range(len(boxes_tensor)):
+                x1, y1, x2, y2 = boxes_tensor[i].astype(int)
+                conf = float(confs_tensor[i])
+                class_id = int(class_ids_tensor[i])
+                if conf > config.CONF_THRESHOLD:
+                    detections.append((x1, y1, x2, y2, conf, class_id))
+    
+            with state.detections_lock:
+                state.latest_detections.clear()
+                state.latest_detections.extend(detections)
+
+            for x1, y1, x2, y2, conf, class_id in detections:
+                if class_id >= len(class_names):
+                    print(f"[Vision] ⚠️ Skipping invalid class_id: {class_id}")
+                    continue
+
+        cap.release()
+        cv2.destroyAllWindows()
+
+
+    thread = threading.Thread(target=inference_loop, daemon=True)
+    thread.start()
+    print("[Vision] 🌀 Inference thread started")
+
+    return cap, stop_event
+
+
+def init_yolo(model_path="models/best.pt"):
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model = YOLO(model_path)
+    return model
+
+def pixel_to_world(u, v, H):
+    pt = np.array([[[u, v]]], dtype=np.float32)
+    world_pt = cv2.perspectiveTransform(pt, H)
+    x_mm, y_mm = world_pt[0][0]
+    dx, dy = 5.975, -5.975
+    return x_mm - dx, y_mm - dy
+
+def wait_for_inference_ready(state: VisionState, timeout=10.0):
+    print("[Vision] ⏳ Waiting for inference to be ready...")
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        with state.inference_ready_lock:
+            if state.inference_ready:
+                print("[Vision] ✅ Inference is ready.")
+                return True
+        time.sleep(0.1)
+    print("[Vision] ❌ Timeout: Inference was not ready in time.")
+    return False
+
+
+def detect_target(target_class, config: VisionConfig, state: VisionState):
+    with state.detections_lock:
+        detections = list(state.latest_detections)
+
     matches = []
+    hit_shown = False
 
-    for box in results.boxes:
-        class_id = int(box.cls[0].item())
+    for x1, y1, x2, y2, conf, class_id in detections:
         class_name = class_names[class_id]
-        conf = float(box.conf[0].item())
-
         if class_name != target_class:
-            print("Mismatch class name")
+            continue
+        
+            # Refine center by ellipse if not a specific class
+        if target_class != "Marsipan" and class_name != "Fransk" and class_name != "Notti" and class_name != "Daim":
+            bbox = (x1, y1, x2, y2, conf, class_id)
+            refined_center = refine_center_by_ellipse(state.latest_frame, bbox, debug=True)
+            x_pixel = refined_center[0]
+            y_pixel = refined_center[1]
+        else:
+            # Use original center if not refining
+            x_pixel = int((x1 + x2) / 2)
+            y_pixel = int((y1 + y2) / 2)
+
+        # Distance from image center
+        dx = x_pixel - config.IMG_CENTER_X
+
+        radius_px = int(config.WORKING_RADIUS_CM / config.PIXEL_TO_CM_X)
+
+        dy = y_pixel - config.IMG_CENTER_Y
+        dist_px = np.sqrt(dx**2 + dy**2)
+
+
+
+        #Creating a circle on the working area range to ingore hits around the slide
+
+        angle_rad = np.deg2rad(config.EXCLUSION_ANGLE_DEG)
+        r_for_center = int(radius_px * config.EXCLUSION_OFFSET)
+
+
+        ex_center_x = config.IMG_CENTER_X + int(r_for_center * np.cos(angle_rad))
+        ex_center_y = config.IMG_CENTER_Y + int(r_for_center * np.sin(angle_rad))
+        ex_radius_px = max(1, int(config.EXCLUSION_RADIUS_CM / config.PIXEL_TO_CM_X))
+
+        ex_dx = x_pixel - ex_center_x
+        ex_dy = y_pixel - ex_center_y
+        ex_dist_px = np.hypot(ex_dx, ex_dy)
+
+
+
+        # Compare to radius (in px)
+        if dist_px > radius_px:
+            print(f"[Vision] Skipping {class_name} — outside working area.")
+            continue  # outside of working area
+
+        if ex_dist_px <= ex_radius_px:
+            print(f"[Vision] Skipping {class_name} - inside slide zone")
             continue
 
-        x_pixel = int(box.xywh[0][0].item())
-        y_pixel = int(box.xywh[0][1].item())
 
-        x_cm = (x_pixel - config().IMG_CENTER_X) * config().PIXEL_TO_CM_X
-        y_cm = (y_pixel - config().IMG_CENTER_Y) * config().PIXEL_TO_CM_Y
 
-        matches.append((class_name, x_cm, y_cm, conf))
+        # Otherwise, compute world coords and add as match
+        x_mm, y_mm = pixel_to_world(x_pixel, y_pixel, config.H)
+        matches.append((class_name, x_mm, y_mm, conf))
 
-    if matches:
-        cv2.imshow("Picture", frame)
-        cv2.waitKey(5000)
-        cv2.destroyWindow("Picture")
+        # Show current frame with hit visualization (use latest at hit moment)
+        if not hit_shown:
+            with state.frame_lock:
+                frame = state.latest_frame.copy() if state.latest_frame is not None else None
+
+            if frame is not None:
+                
+                label = f"{class_name} {conf:.2f}"
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                cv2.circle(frame, (x_pixel, y_pixel), 4, (0, 0, 255), -1)
+                cv2.circle(frame, (ex_center_x, ex_center_y), ex_radius_px, (0, 165, 255), 2)
+
+
+                #cv2.imshow("🎯 Target Hit", frame)
+                #cv2.waitKey(10000)
+                #cv2.destroyWindow("🎯 Target Hit")
+
+            hit_shown = True
 
     return matches
+
+
+def show_live_detections(state: VisionState):
+    visCFG = config()  # You may already have this passed instead
+
+    while True:
+        with state.frame_lock:
+            frame = state.latest_frame.copy() if state.latest_frame is not None else None
+        with state.detections_lock:
+            detections = list(state.latest_detections)
+
+        if frame is None:
+            continue
+
+        # Draw detections
+        for x1, y1, x2, y2, conf, class_id in detections:
+            if class_id >= len(class_names):
+                continue
+            label = f"{class_names[class_id]} {conf:.2f}"
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.putText(frame, label, (x1, y1 - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+
+        # ✅ Draw center dot
+        cv2.circle(
+            frame,
+            (visCFG.IMG_CENTER_X, visCFG.IMG_CENTER_Y),
+            radius=4,
+            color=(255, 0, 0),
+            thickness=-1
+        )
+
+        #cv2.imshow("🍬 All Detections", frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    cv2.destroyAllWindows()
+
+
 
 def video_without_inference():
     """Display the live video feed without running inference."""
@@ -122,7 +310,7 @@ def video_without_inference():
             print("Failed to grab frame.")
             break
 
-        cv2.imshow("Live Feed", frame)
+        #cv2.imshow("Live Feed", frame)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
@@ -156,7 +344,7 @@ def video_loop(cap, stop_event):
             continue
 
         draw_overlay(frame)
-        cv2.imshow("🍬 YOLOv8 Live Detection", frame)
+        #cv2.imshow("🍬 YOLOv8 Live Detection", frame)
 
         # Handle 'q' key press in video window
         if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -165,3 +353,117 @@ def video_loop(cap, stop_event):
 
     cap.release()
     cv2.destroyAllWindows()
+
+
+def refine_center_by_ellipse(image, bbox, debug=False):
+    """
+    Refines target center by fitting an ellipse to the masked object region.
+
+    Args:
+        image (np.ndarray): Full BGR image.
+        bbox (tuple): YOLO box (x1, y1, x2, y2, conf, class_id)
+        debug (bool): Show visualization
+
+    Returns:
+        (int, int): Refined center coordinates (x, y)
+    """
+    x1, y1, x2, y2 = map(int, bbox[:4])
+
+    original_x = (x1 + x2) // 2
+    original_y = (y1 + y2) // 2
+
+    # Shave off pixels to avoid having the wrapper ends distorting the ellipse
+    width = x2 - x1
+    height = y2 - y1
+    aspect_ratio = width / height
+
+    # Shave ratios
+    shave_ratio_x = 0.25  # 15% of width
+    shave_ratio_y = 0.25  # 15% of height
+
+    # Default trims
+    trim_x = int(width * shave_ratio_x)
+    trim_y = int(height * shave_ratio_y)
+
+    # Adjust trimming based on aspect ratio
+    if aspect_ratio > 1.5:
+        # Wider than tall → shave X only
+        x1 += trim_x
+        x2 -= trim_x
+    elif aspect_ratio < 0.67:
+        # Taller than wide → shave Y only
+        y1 += trim_y
+        y2 -= trim_y
+    else:
+        # Roughly square → shave both
+        x1 += trim_x
+        x2 -= trim_x
+        y1 += trim_y
+        y2 -= trim_y
+
+    #x1 = max(0, x1)
+    #y1 = max(0, y1)
+    #x2 = min(image.shape[1], x2)
+    #y2 = min(image.shape[0], y2)
+
+    cropped = image[y1:y2, x1:x2].copy()
+    hsv = cv2.cvtColor(cropped, cv2.COLOR_BGR2HSV)
+
+
+
+    # Convert to grayscale
+    gray_crop = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
+
+    # Threshold to separate foreground (candies) from background
+    # White pixels (~255) become 0, and darker areas become 255 (inverted)
+    _, mask = cv2.threshold(gray_crop, 170, 255, cv2.THRESH_BINARY_INV)
+
+    # Optional: remove small noise
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+
+    # Find contours
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    if contours:
+        largest = max(contours, key=cv2.contourArea)
+        if len(largest) >= 5:
+            ellipse = cv2.fitEllipse(largest)
+            (cx_local, cy_local), (MA, ma), angle = ellipse
+            refined_x = x1 + int(cx_local)
+            refined_y = y1 + int(cy_local)
+
+            if debug:
+                # Convert binary mask to 3-channel grayscale for overlay
+                mask_rgb = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
+
+                # Tint green only
+                tinted_mask = np.zeros_like(mask_rgb)
+                tinted_mask[:, :, 1] = mask_rgb[:, :, 1]
+
+                # Blend cropped region with tinted mask
+                overlay = cv2.addWeighted(cropped, 0.7, tinted_mask, 0.3, 0)
+
+                # Draw the fitted ellipse on the overlay
+                cv2.ellipse(overlay, ellipse, (0, 255, 255), 2)  # yellow ellipse
+                cv2.circle(overlay, (int(cx_local), int(cy_local)), 4, (0, 0, 255), -1)  # red centroid
+
+                # Show the final image
+                #cv2.imshow("Overlay: Cropped Image + Mask + Ellipse", overlay)
+                #cv2.waitKey(0)
+                #cv2.destroyAllWindows()
+
+            dist = np.sqrt((refined_x - original_x)**2 + (refined_y - original_y)**2)
+
+            # Set a maximum allowed offset (in pixels)
+            max_distance = 4  # tune this value
+
+            if dist <= max_distance:
+                return refined_x, refined_y
+            else:
+                if debug:
+                    print(f"[Warning] Refined center too far from original: {dist:.1f} px — using fallback center.")
+                return original_x, original_y
+
+    # Fallback: center of bounding box
+    return (original_x, original_y)
