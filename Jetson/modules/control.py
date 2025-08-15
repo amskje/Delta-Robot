@@ -10,6 +10,7 @@ HOME_X = 3.038
 HOME_Y = 0.1655
 HOME_Z = -247.34
 
+
 @dataclass
 class ControlConfig:
     # Base parameters
@@ -20,9 +21,11 @@ class ControlConfig:
     DOWN_NOTTI_MM: int = 37
     INITIAL_POSITION: kinematics.Position = kinematics.Position(HOME_X, HOME_Y, HOME_Z)  # Initial position after goHome()
 
+    Z_WORKING = controller.Z_WORKING.0  # Z coordinate for working height
+
      # New fallback positions
-    FALLBACK_STAGE1: Tuple[float, float, float] = (0.0, 0.0, -300.0)
-    FALLBACK_STAGE2: Tuple[float, float, float] = (-120.0, 80.0, -300.0)
+    FALLBACK_STAGE1: Tuple[float, float, float] = (0.0, 0.0, controller.Z_WORKING.0)
+    FALLBACK_STAGE2: Tuple[float, float, float] = (-120.0, 80.0, controller.Z_WORKING.0)
 
 def config() -> ControlConfig:
     return ControlConfig()
@@ -31,36 +34,18 @@ class DeltaRobotController:
     def __init__(self, serial_comm: comms.SerialComm):
         self.serial = serial_comm  # Instance of SerialComm
         self.current_pos = [HOME_X, HOME_Y, HOME_Z] # Track robot position in mm
+        self.Z_WORKING = ControlConfig.Z_WORKING  # Working height
 
-        with open('homography_ROBOT_WORLD_330_REALDEAL.json', 'r') as file:
+        with open('homography_ROBOT_WORLD.json', 'r') as file:
             H_robot = json.load(file)
         
         self.H_robot_inv = np.linalg.inv(H_robot)
-
-        """
-        self.H_z1 = np.array(H_robot["H_z1"]) # z1 = -335
-        self.H_z2 = np.array(H_robot["H_z2"]) # z2 = -296
-
-        self.H_z1_inv = np.linalg.inv(self.H_z1)
-        self.H_z2_inv = np.linalg.inv(self.H_z2)
-        print(H_robot)
-        """
-
-    
+ 
     def correct_target(self, x_desired, y_desired, z):
         """Transform a target point from real-world into robot coordinates"""
         pt = np.array([[[x_desired, y_desired]]], dtype=np.float32)
         corrected = cv2.perspectiveTransform(pt, self.H_robot_inv)
-
-        """
-        if (z < -310):
-            corrected = cv2.perspectiveTransform(pt, self.H_z1_inv)
-        else:
-            corrected = cv2.perspectiveTransform(pt, self.H_z2_inv)
-        """
         
-        
-
         return corrected[0][0]
 
     def check_abort(self, abort_flag, msg=""):
@@ -68,7 +53,6 @@ class DeltaRobotController:
             print(f"[Control] ABORT detected {msg}. Retreating...")
             return True
         return False
-
 
     def send_angles_sequence(self, angles_list, angles_down_list, down_included, abort_flag=None):
         self.serial.send_message("POSITION")

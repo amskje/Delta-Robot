@@ -1,25 +1,18 @@
 import time
 import rclpy
 from enum import Enum, auto
-
 import modules.vision as vision
 import modules.comms as comms
 import modules.control as control
 import modules.kinematics as kinematics
-
-
 import numpy as np
 import threading
 import sys
 import time
-
-#Teset, for middlertidig keyboard knapp d
 import sys
 import select
-#Teset, for middlertidig keyboard knapp d
 
 
-import psutil
 
 RESTART_EXIT_CODE = 42
 
@@ -129,8 +122,8 @@ def main():
 
 
     #Move robot to position to take picture
-    controller.go_to_pos(move_pos = (0, 0, -300), abort_flag=abort_flag)
-    controller.go_to_pos(move_pos = (-120, 80, -300), abort_flag=abort_flag)
+    controller.go_to_pos(move_pos = (0, 0, controller.Z_WORKING), abort_flag=abort_flag)
+    controller.go_to_pos(move_pos = (-120, 80, controller.Z_WORKING), abort_flag=abort_flag)
 
 
     
@@ -173,7 +166,6 @@ def main():
 
                 
 
-                #Teset, for middlertidig keyboard knapp d
 
                 # Check for 'd' key to simulate "daim" message
                 if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:
@@ -244,7 +236,6 @@ def main():
                         state = RobotState.DELIVERING
                         continue
 
-                #Teset, for middlertidig keyboard knapp d
                 
 
 
@@ -275,13 +266,13 @@ def main():
                         
                         # Move robot to a different position for the next attempt
                         if retry_count == 0:
-                            controller.go_to_pos(move_pos=(120, 80, -300), abort_flag=abort_flag)
+                            controller.go_to_pos(move_pos=(120, 80, controller.Z_WORKING), abort_flag=abort_flag)
                         if retry_count == 1:
-                            controller.go_to_pos(move_pos=(120, -80, -300), abort_flag=abort_flag)
+                            controller.go_to_pos(move_pos=(120, -80, controller.Z_WORKING), abort_flag=abort_flag)
                         if retry_count == 2:
-                            controller.go_to_pos(move_pos=(-120, -80, -300), abort_flag=abort_flag)
+                            controller.go_to_pos(move_pos=(-120, -80, controller.Z_WORKING), abort_flag=abort_flag)
                         if retry_count == 3:
-                            controller.go_to_pos(move_pos=(-120, 80, -300), abort_flag=abort_flag)
+                            controller.go_to_pos(move_pos=(-120, 80, controller.Z_WORKING), abort_flag=abort_flag)
                         retry_count += 1
                         time.sleep(1)
 
@@ -293,8 +284,8 @@ def main():
 
                     result_msg = ""
                     success, result_msg = controller.twist_delivery(
-                        target_pos=(target_x, target_y, -300),
-                        dropoff_pos=(-120, 80, -300),
+                        target_pos=(target_x, target_y, controller.Z_WORKING),
+                        dropoff_pos=(-120, 80, controller.Z_WORKING),
                         twist_type=order,
                         abort_flag=abort_flag
                     )
@@ -391,8 +382,8 @@ def main():
                         state = RobotState.IDLE
                         serial.send_message("AUTOMATIC")
                         serial.wait_for_ack("EXIT_MANUAL")
-                        controller.go_to_pos(move_pos = (0, 0, -300), abort_flag=abort_flag)
-                        controller.go_to_pos(move_pos = (-120, 80, -300), abort_flag=abort_flag)
+                        controller.go_to_pos(move_pos = (0, 0, controller.Z_WORKING), abort_flag=abort_flag)
+                        controller.go_to_pos(move_pos = (-120, 80, controller.Z_WORKING), abort_flag=abort_flag)
 
                     else:
                         log(f"Unknown manual message: {msg}")

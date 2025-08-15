@@ -246,77 +246,9 @@ def detect_target(target_class, config: VisionConfig, state: VisionState):
                 cv2.circle(frame, (x_pixel, y_pixel), 4, (0, 0, 255), -1)
                 cv2.circle(frame, (ex_center_x, ex_center_y), ex_radius_px, (0, 165, 255), 2)
 
-
-                #cv2.imshow("🎯 Target Hit", frame)
-                #cv2.waitKey(10000)
-                #cv2.destroyWindow("🎯 Target Hit")
-
             hit_shown = True
 
     return matches
-
-
-def show_live_detections(state: VisionState):
-    visCFG = config()  # You may already have this passed instead
-
-    while True:
-        with state.frame_lock:
-            frame = state.latest_frame.copy() if state.latest_frame is not None else None
-        with state.detections_lock:
-            detections = list(state.latest_detections)
-
-        if frame is None:
-            continue
-
-        # Draw detections
-        for x1, y1, x2, y2, conf, class_id in detections:
-            if class_id >= len(class_names):
-                continue
-            label = f"{class_names[class_id]} {conf:.2f}"
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(frame, label, (x1, y1 - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
-
-        # ✅ Draw center dot
-        cv2.circle(
-            frame,
-            (visCFG.IMG_CENTER_X, visCFG.IMG_CENTER_Y),
-            radius=4,
-            color=(255, 0, 0),
-            thickness=-1
-        )
-
-        #cv2.imshow("🍬 All Detections", frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-    cv2.destroyAllWindows()
-
-
-
-def video_without_inference():
-    """Display the live video feed without running inference."""
-    cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
-
-    if not cap.isOpened():
-        print("Failed to open camera.")
-        return
-
-    cv2.namedWindow("Live Feed", cv2.WINDOW_AUTOSIZE)
-
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            print("Failed to grab frame.")
-            break
-
-        #cv2.imshow("Live Feed", frame)
-
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-    cap.release()
-    cv2.destroyAllWindows()
 
 # Draw overlay on video frame
 def draw_overlay(frame):
@@ -330,29 +262,6 @@ def draw_overlay(frame):
     for j in range(1, 13):
         cv2.circle(frame, (config().IMG_CENTER_X, config().IMG_CENTER_Y + int(j * 21.62)), radius=2, color=(0, 255, 0), thickness=-1)
         cv2.circle(frame, (config().IMG_CENTER_X, config().IMG_CENTER_Y - int(j * 21.62)), radius=2, color=(0, 255, 0), thickness=-1)
-
-# Video thread
-def video_loop(cap, stop_event):
-    global running
-    cv2.namedWindow("🍬 YOLOv8 Live Detection", cv2.WINDOW_NORMAL)
-    cv2.resizeWindow("🍬 YOLOv8 Live Detection", config().FRAME_WIDTH, config().FRAME_HEIGHT)
-
-    while not stop_event.is_set():
-        ret, frame = cap.read()
-        if not ret:
-            print("⚠️ Failed to read frame.")
-            continue
-
-        draw_overlay(frame)
-        #cv2.imshow("🍬 YOLOv8 Live Detection", frame)
-
-        # Handle 'q' key press in video window
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            stop_event.set()
-            break
-
-    cap.release()
-    cv2.destroyAllWindows()
 
 
 def refine_center_by_ellipse(image, bbox, debug=False):
