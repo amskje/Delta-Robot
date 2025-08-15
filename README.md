@@ -175,7 +175,6 @@ When calibrating it is important that the reference coordinate system in step 2 
 The coordinate system of the robot has its x axis pointing away from the HMI screen, the y axis pointing to the right and the z axis pointing up towards the roof.
 
 ## <a name="_toc1308711842"></a>YOLOv8
-### <a name="_toc500146127"></a>General
 In case there is need for training a new model, there is a bit over a thousand images that are stored in the private cloud belonging to Amund. These images also have corresponding .txt files with bounding boxes for training and validation of YOLO models. Note that the .txt files are in YOLO format, but it is probably easy to convert to some other format.
 
 We recommend using *LabelImg* for manual labeling.
