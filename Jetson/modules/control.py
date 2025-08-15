@@ -21,11 +21,11 @@ class ControlConfig:
     DOWN_NOTTI_MM: int = 37
     INITIAL_POSITION: kinematics.Position = kinematics.Position(HOME_X, HOME_Y, HOME_Z)  # Initial position after goHome()
 
-    Z_WORKING = controller.Z_WORKING.0  # Z coordinate for working height
+    Z_WORKING = -300  # Z coordinate for working height
 
      # New fallback positions
-    FALLBACK_STAGE1: Tuple[float, float, float] = (0.0, 0.0, controller.Z_WORKING.0)
-    FALLBACK_STAGE2: Tuple[float, float, float] = (-120.0, 80.0, controller.Z_WORKING.0)
+    FALLBACK_STAGE1: Tuple[float, float, float] = (0.0, 0.0, Z_WORKING)
+    FALLBACK_STAGE2: Tuple[float, float, float] = (-120.0, 80.0, Z_WORKING)
 
 def config() -> ControlConfig:
     return ControlConfig()
